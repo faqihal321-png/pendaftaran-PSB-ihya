@@ -145,6 +145,10 @@
                                 <input type="text" name="namaIbu" class="form-control" required>
                             </div>
                             <div class="col-md-6">
+                                <label class="form-label fw-bold">Pekerjaan Ibu</label>
+                                <input type="text" name="kerjaIbu" class="form-control" placeholder="Contoh: Ibu Rumah Tangga" required>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label fw-bold small text-muted">WhatsApp (Aktif)</label>
                                 <input type="number" name="whatsapp" class="form-control" placeholder="08xxx" required>
                             </div>
@@ -153,16 +157,20 @@
                         <h5 class="section-title">Upload Berkas</h5>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <div class="file-box">
-                                    <label class="form-label small fw-bold">Foto Santri</label>
-                                    <input type="file" name="foto" class="form-control" accept="image/*" required>
-                                </div>
+                                <label class="form-label fw-bold">Foto Santri (3x4)</label>
+                                <input type="file" name="foto" class="form-control" accept="image/*" required>
                             </div>
                             <div class="col-md-6">
-                                <div class="file-box">
-                                    <label class="form-label small fw-bold">Kartu Keluarga</label>
-                                    <input type="file" name="kk" class="form-control" accept="image/*" required>
-                                </div>
+                                <label class="form-label fw-bold">Kartu Keluarga (KK)</label>
+                                <input type="file" name="kk" class="form-control" accept="image/*,application/pdf" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">KTP Orang Tua</label>
+                                <input type="file" name="ktp" class="form-control" accept="image/*,application/pdf" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Ijazah Terakhir / SKL</label>
+                                <input type="file" name="ijazah" class="form-control" accept="image/*,application/pdf" required>
                             </div>
                         </div>
 
