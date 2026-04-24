@@ -3,25 +3,24 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
-const session = require('express-session'); // Tambahan untuk login
-const ExcelJS = require('exceljs'); // Tambahan untuk Export Excel
+const session = require('express-session'); 
+const ExcelJS = require('exceljs'); 
 const app = express();
 
 // --- CONFIGURATION ---
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json()); // Tambahan agar bisa membaca JSON dari fetch
 app.use('/uploads', express.static('uploads'));
 app.use('/assets', express.static('assets')); 
 
 app.use(session({
-    secret: 'psb-pondok-key-2026', // Kunci enkripsi session
+    secret: 'psb-pondok-key-2026', 
     resave: false,
     saveUninitialized: true
 }));
 
-// Folder Uploads
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
-// Multer Storage
 const storage = multer.diskStorage({
     destination: 'uploads/',
     filename: (req, file, cb) => {
@@ -30,7 +29,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// --- MIDDLEWARE CEK LOGIN ---
 const checkAuth = (req, res, next) => {
     if (req.session.isLoggedIn) {
         next();
@@ -65,7 +63,6 @@ app.post('/daftar', upload.fields([
         fs.writeFile('database.json', JSON.stringify(json, null, 2), (err) => {
             if (err) return res.send("Gagal menyimpan data.");
             
-            // Tampilan Sukses Baru yang Menarik & Simple
             res.send(`
                 <!DOCTYPE html>
                 <html lang="id">
@@ -88,9 +85,7 @@ app.post('/daftar', upload.fields([
                 </head>
                 <body>
                     <div class="success-card">
-                        <div class="check-icon">
-                            <i class="fas fa-check"></i>
-                        </div>
+                        <div class="check-icon"><i class="fas fa-check"></i></div>
                         <h2>Pendaftaran Berhasil!</h2>
                         <p>Data santri atas nama <strong>${req.body.nama}</strong> telah kami terima. Mohon tunggu konfirmasi selanjutnya melalui WhatsApp.</p>
                         <a href="/" class="btn btn-home">Kembali ke Beranda</a>
@@ -102,13 +97,12 @@ app.post('/daftar', upload.fields([
     });
 });
 
-// --- ROUTE: EXPORT EXCEL (TERBARU DENGAN KOLOM PEKERJAAN) ---
+// --- ROUTE: EXPORT EXCEL ---
 app.get('/admin/export', checkAuth, async (req, res) => {
     try {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Data Pendaftar');
 
-        // 1. Definisi Kolom (Termasuk Pekerjaan Orang Tua)
         worksheet.columns = [
             { header: 'No', key: 'no', width: 5 },
             { header: 'Tanggal Daftar', key: 'tanggal', width: 20 },
@@ -119,29 +113,18 @@ app.get('/admin/export', checkAuth, async (req, res) => {
             { header: 'Alamat', key: 'alamat', width: 35 },
             { header: 'WhatsApp', key: 'whatsapp', width: 18 },
             { header: 'Nama Ayah', key: 'namaAyah', width: 20 },
-            { header: 'Pekerjaan Ayah', key: 'kerjaAyah', width: 20 }, // Penambahan Kolom Pekerjaan
+            { header: 'Pekerjaan Ayah', key: 'kerjaAyah', width: 20 },
             { header: 'Nama Ibu', key: 'namaIbu', width: 20 },
-            { header: 'Pekerjaan Ibu', key: 'kerjaIbu', width: 20 }    // Penambahan Kolom Pekerjaan
+            { header: 'Pekerjaan Ibu', key: 'kerjaI Ibu', width: 20 }
         ];
 
-        // 2. Styling Header (Hijau Pondok)
         worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
-        worksheet.getRow(1).fill = { 
-            type: 'pattern', 
-            pattern: 'solid', 
-            fgColor: { argb: '2E7D32' } 
-        };
-        worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '2E7D32' } };
 
-        // 3. Ambil Data dari database.json
-        if (!fs.existsSync('database.json')) {
-            return res.send("Data belum tersedia.");
-        }
-        
+        if (!fs.existsSync('database.json')) return res.send("Data belum tersedia.");
         const data = fs.readFileSync('database.json');
         const pendaftar = JSON.parse(data);
 
-        // 4. Masukkan Data ke Baris Excel
         pendaftar.forEach((p, index) => {
             const row = worksheet.addRow({
                 no: index + 1,
@@ -153,34 +136,26 @@ app.get('/admin/export', checkAuth, async (req, res) => {
                 alamat: p.alamat || '-',
                 whatsapp: p.whatsapp || '-',
                 namaAyah: p.namaAyah || '-',
-                kerjaAyah: p.kerjaAyah || '-', // Mengambil data kerjaAyah
+                kerjaAyah: p.kerjaAyah || '-',
                 namaIbu: p.namaIbu || '-',
-                kerjaIbu: p.kerjaIbu || '-'    // Mengambil data kerjaIbu
+                kerjaIbu: p.kerjaIbu || '-'
             });
-
-            // Memberikan Border agar rapi (Kotak-kotak)
-            row.eachCell((cell) => {
-                cell.border = {
-                    top: { style: 'thin' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thin' },
-                    right: { style: 'thin' }
-                };
-                cell.alignment = { vertical: 'middle' };
-            });
+            row.eachCell((cell) => { cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }; });
         });
 
-        // 5. Kirim File ke Browser
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=Data_Pendaftar_PSB_Lengkap.xlsx');
-        
         await workbook.xlsx.write(res);
         res.end();
+    } catch (e) { res.status(500).send("Gagal ekspor: " + e.message); }
+});
 
-    } catch (e) {
-        console.error("Error Export:", e);
-        res.status(500).send("Gagal ekspor: " + e.message);
-    }
+// --- ROUTE: KOSONGKAN DATA (TAMBAHAN BARU) ---
+app.post('/admin/kosongkan', checkAuth, (req, res) => {
+    fs.writeFile('database.json', JSON.stringify([], null, 2), (err) => {
+        if (err) return res.json({ success: false, message: "Gagal mengosongkan data." });
+        res.json({ success: true, message: "Semua data pendaftaran telah berhasil dihapus!" });
+    });
 });
 
 // --- ROUTES: AUTHENTICATION ---
@@ -197,31 +172,17 @@ app.get('/login', (req, res) => {
             body { background: #f1f5f9; height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; }
             .login-card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 400px; }
             .btn-success { background: #2e7d32; border: none; border-radius: 10px; padding: 12px; font-weight: 600; }
-            .form-control { border-radius: 10px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; }
         </style>
     </head>
     <body>
-        <div class="login-card">
-            <div class="text-center mb-4">
-                <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:60px; height:60px;">
-                    <i class="fas fa-lock" style="font-size: 24px;"></i>
-                </div>
-                <h4 class="fw-bold">Admin Login</h4>
-                <p class="text-muted small">Masukkan kredensial untuk akses dashboard</p>
-            </div>
+        <div class="login-card text-center">
+            <h4 class="fw-bold mb-4">Admin Login</h4>
             <form action="/login" method="POST">
-                <div class="mb-3">
-                    <label class="form-label small fw-bold">Username</label>
-                    <input type="text" name="user" class="form-control" required placeholder="admin">
-                </div>
-                <div class="mb-4">
-                    <label class="form-label small fw-bold">Password</label>
-                    <input type="password" name="pass" class="form-control" required placeholder="••••••••">
-                </div>
+                <input type="text" name="user" class="form-control mb-3" required placeholder="Username">
+                <input type="password" name="pass" class="form-control mb-4" required placeholder="Password">
                 <button type="submit" class="btn btn-success w-100">Masuk Sekarang</button>
             </form>
         </div>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
     </body>
     </html>
     `);
@@ -242,179 +203,99 @@ app.get('/logout', (req, res) => {
     res.redirect('/login');
 });
 
-// --- ROUTES: ADMIN (PROTECTED BY CHECKAUTH) ---
+// --- ROUTES: ADMIN ---
 app.get('/admin', checkAuth, (req, res) => {
     fs.readFile('database.json', (err, data) => {
-        if (err || data.length === 0) {
-            return res.send("<h2>Belum ada data pendaftar.</h2><a href='/'>Kembali</a>");
-        }
+        let pendaftar = [];
+        if (!err && data.length > 0) pendaftar = JSON.parse(data);
 
-        try {
-            const pendaftar = JSON.parse(data);
-            
-            let html = `
-            <!DOCTYPE html>
-            <html lang="id">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Admin Panel - PSB Pondok</title>
-                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
-                <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
-                    body { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #334155; }
-                    
-                    .navbar-custom { 
-                        background: linear-gradient(135deg, #1e4d2b, #2e7d32); 
-                        padding: 15px 40px; 
-                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                        position: relative;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        min-height: 100px;
-                    }
-                    .nav-title-center {
-                        text-align: center;
-                        color: white;
-                    }
-                    .nav-kop-right {
-                        position: absolute;
-                        right: 40px;
-                        display: flex;
-                        align-items: center;
-                        background: rgba(255,255,255,0.1);
-                        padding: 8px 15px;
-                        border-radius: 12px;
-                        border: 1px solid rgba(255,255,255,0.2);
-                        color: white;
-                    }
-                    .nav-logout-left {
-                        position: absolute;
-                        left: 40px;
-                    }
-
-                    .main-card { border: none; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); background: white; }
-                    .table thead th { background-color: #f1f5f9; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; color: #64748b; padding: 15px; border: none; }
-                    .foto-circle { width: 50px; height: 50px; object-fit: cover; border-radius: 12px; border: 2px solid #e2e8f0; }
-                    .btn-detail { background-color: #f1f5f9; color: #1e293b; border: none; font-weight: 600; transition: all 0.2s; }
-                    .btn-detail:hover { background-color: #2e7d32; color: white; transform: translateY(-2px); }
-                    .modal-content { border: none; border-radius: 24px; overflow: hidden; }
-                    .modal-info-box { background-color: #f8fafc; border-radius: 16px; padding: 15px; border: 1px solid #f1f5f9; }
-                    .label-custom { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; margin-bottom: 2px; display: block; }
-                    .data-value { font-weight: 600; color: #1e293b; }
-                    
-                    /* Styling Button Export */
-                    .btn-export-excel { background-color: #1e4d2b; color: white; border: none; font-weight: 600; transition: all 0.2s; }
-                    .btn-export-excel:hover { background-color: #2e7d32; color: white; transform: scale(1.05); }
-                </style>
-            </head>
-            <body>
-
-            <nav class="navbar-custom mb-4">
-                <div class="nav-logout-left">
-                    <a href="/logout" class="btn btn-outline-light btn-sm rounded-pill px-3 fw-bold">
-                        <i class="fas fa-sign-out-alt me-1"></i> Keluar
-                    </a>
-                </div>
-
-                <div class="nav-title-center">
-                    <h4 class="mb-0 fw-bold text-uppercase" style="letter-spacing: 1px;">Dashboard Admin PSB</h4>
-                    <small class="opacity-75">Manajemen Data Santri Baru</small>
-                </div>
-
-                <div class="nav-kop-right">
-                    <img src="https://cdn-icons-png.flaticon.com/512/2641/2641322.png" alt="Logo" style="width: 35px; height: 35px; margin-right: 10px; filter: brightness(0) invert(1);">
-                    <div style="line-height: 1.1; text-align: left;">
-                        <div style="font-size: 0.7rem; font-weight: 600; opacity: 0.9;">PONDOK PESANTREN</div>
-                        <div style="font-size: 0.9rem; font-weight: 800;">AL-FAQIH</div>
-                    </div>
-                </div>
+        let html = `
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Admin Panel - PSB Pondok</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+                body { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #334155; }
+                .navbar-custom { background: linear-gradient(135deg, #1e4d2b, #2e7d32); padding: 15px 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; min-height: 100px; position: relative; }
+                .nav-logout-left { position: absolute; left: 40px; }
+                .nav-kop-right { position: absolute; right: 40px; display: flex; align-items: center; color: white; }
+                .main-card { border: none; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); background: white; padding: 25px; }
+                .foto-circle { width: 50px; height: 50px; object-fit: cover; border-radius: 12px; }
+                .modal-info-box { background-color: #f8fafc; border-radius: 12px; padding: 12px; margin-bottom: 10px; border: 1px solid #f1f5f9; }
+                .label-custom { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; }
+                .data-value { font-weight: 600; color: #1e293b; }
+            </style>
+        </head>
+        <body>
+            <nav class="navbar-custom mb-4 text-white text-center">
+                <div class="nav-logout-left"><a href="/logout" class="btn btn-outline-light btn-sm rounded-pill px-3">Keluar</a></div>
+                <div><h4 class="mb-0 fw-bold">DASHBOARD ADMIN PSB</h4><small>Manajemen Data Santri Baru</small></div>
+                <div class="nav-kop-right"><div class="text-end small fw-bold">PONDOK PESANTREN<br>AL-FAQIH</div></div>
             </nav>
 
             <div class="container">
-                <div class="card main-card p-4">
+                <div class="card main-card">
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h6 class="fw-bold mb-0">Daftar Santri Baru <span class="badge bg-success-subtle text-success rounded-pill ms-2">${pendaftar.length} Orang</span></h6>
-                        <a href="/admin/export" class="btn btn-export-excel btn-sm px-3 rounded-pill shadow-sm">
-                           <i class="fas fa-file-excel me-2"></i> Export Ke Excel
-                        </a>
+                        <h6 class="fw-bold mb-0">Total: <span class="badge bg-success">${pendaftar.length} Orang</span></h6>
+                        <div class="d-flex gap-2">
+                            <button onclick="location.reload()" class="btn btn-light btn-sm border rounded-pill px-3"><i class="fas fa-sync-alt me-1"></i> Refresh</button>
+                            <button onclick="kosongkanData()" class="btn btn-danger btn-sm rounded-pill px-3"><i class="fas fa-trash-alt me-1"></i> Kosongkan</button>
+                            <a href="/admin/export" class="btn btn-success btn-sm px-3 rounded-pill"><i class="fas fa-file-excel me-1"></i> Export Excel</a>
+                        </div>
                     </div>
                     
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
-                            <thead>
-                                <tr>
-                                    <th>No</th>
-                                    <th>Santri</th>
-                                    <th>NISN / NIK</th>
-                                    <th>Jenjang</th>
-                                    <th class="text-end">Aksi</th>
-                                </tr>
+                            <thead class="table-light">
+                                <tr><th>No</th><th>Santri</th><th>NISN / NIK</th><th>Jenjang</th><th class="text-end">Aksi</th></tr>
                             </thead>
                             <tbody>`;
 
             pendaftar.forEach((p, index) => {
                 const b = p.berkas || {};
                 const modalId = `modal${index}`;
-
                 html += `
                     <tr>
-                        <td><span class="text-muted small">${index + 1}</span></td>
+                        <td>${index + 1}</td>
                         <td>
                             <div class="d-flex align-items-center">
                                 <img src="/${b.foto}" class="foto-circle me-3">
-                                <div>
-                                    <div class="fw-bold text-dark">${p.nama}</div>
-                                    <div class="small text-muted">${p.whatsapp}</div>
-                                </div>
+                                <div><div class="fw-bold">${p.nama}</div><small class="text-muted">${p.whatsapp}</small></div>
                             </div>
                         </td>
-                        <td>
-                            <div class="small fw-600">${p.nisn}</div>
-                            <div class="small text-muted" style="font-size: 0.7rem;">NIK: ${p.nik}</div>
-                        </td>
-                        <td><span class="badge bg-success-subtle text-success px-3 border border-success-subtle">${p.jenjang}</span></td>
+                        <td><small>NISN: ${p.nisn}<br>NIK: ${p.nik}</small></td>
+                        <td><span class="badge bg-success-subtle text-success">${p.jenjang}</span></td>
                         <td class="text-end">
-                            <button class="btn btn-detail btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#${modalId}">
-                                Detail
-                            </button>
+                            <button class="btn btn-light btn-sm rounded-pill border px-3" data-bs-toggle="modal" data-bs-target="#${modalId}">Detail</button>
                         </td>
                     </tr>
-
                     <div class="modal fade" id="${modalId}" tabindex="-1">
                         <div class="modal-dialog modal-lg modal-dialog-centered">
-                            <div class="modal-content shadow-lg">
-                                <div class="modal-body p-0">
-                                    <div class="row g-0">
-                                        <div class="col-md-4 p-4 text-center" style="background-color: #f8fafc; border-right: 1px solid #f1f5f9;">
-                                            <img src="/${b.foto}" class="img-fluid shadow-sm mb-3" style="border-radius: 20px; border: 5px solid white;">
-                                            <h5 class="fw-bold mb-1">${p.nama}</h5>
-                                            <span class="badge bg-success mb-3">${p.jenjang}</span>
-                                            <div class="d-grid gap-2">
-                                                <a href="https://wa.me/${p.whatsapp}" target="_blank" class="btn btn-success btn-sm rounded-pill">
-                                                    <i class="fab fa-whatsapp me-2"></i>Hubungi Santri
-                                                </a>
-                                            </div>
+                            <div class="modal-content">
+                                <div class="modal-header border-0"><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                <div class="modal-body p-4">
+                                    <div class="row">
+                                        <div class="col-md-4 text-center">
+                                            <img src="/${b.foto}" class="img-fluid rounded shadow-sm mb-3">
+                                            <h5 class="fw-bold">${p.nama}</h5>
+                                            <a href="https://wa.me/${p.whatsapp}" target="_blank" class="btn btn-success btn-sm w-100 rounded-pill">Hubungi Santri</a>
                                         </div>
-                                        <div class="col-md-8 p-4">
-                                            <div class="d-flex justify-content-between mb-3">
-                                                <h6 class="fw-bold text-success"><i class="fas fa-info-circle me-2"></i>Informasi Lengkap</h6>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <div class="row g-3">
+                                        <div class="col-md-8">
+                                            <div class="row g-2">
                                                 <div class="col-6"><div class="modal-info-box"><span class="label-custom">NISN</span><span class="data-value">${p.nisn}</span></div></div>
                                                 <div class="col-6"><div class="modal-info-box"><span class="label-custom">NIK</span><span class="data-value">${p.nik}</span></div></div>
-                                                <div class="col-12"><div class="modal-info-box"><span class="label-custom">Alamat Lengkap</span><span class="data-value small">${p.alamat}</span></div></div>
-                                                <div class="col-6 small"><span class="label-custom">Nama Ayah</span><span class="data-value">${p.namaAyah} (${p.kerjaAyah})</span></div>
-                                                <div class="col-6 small"><span class="label-custom">Nama Ibu</span><span class="data-value">${p.namaIbu} (${p.kerjaIbu})</span></div>
+                                                <div class="col-12"><div class="modal-info-box"><span class="label-custom">Alamat</span><span class="data-value small">${p.alamat}</span></div></div>
+                                                <div class="col-6"><div class="modal-info-box"><span class="label-custom">Ayah</span><span class="data-value">${p.namaAyah}</span></div></div>
+                                                <div class="col-6"><div class="modal-info-box"><span class="label-custom">Ibu</span><span class="data-value">${p.namaIbu}</span></div></div>
                                             </div>
-                                            <h6 class="fw-bold text-success mt-4 mb-3"><i class="fas fa-paperclip me-2"></i>Dokumen Terlampir</h6>
-                                            <div class="d-flex gap-2">
-                                                <a href="/${b.ktp}" target="_blank" class="btn btn-light border btn-sm flex-grow-1 rounded-pill">KTP</a>
-                                                <a href="/${b.ijazah}" target="_blank" class="btn btn-light border btn-sm flex-grow-1 rounded-pill">Ijazah</a>
-                                                <a href="/${b.kk}" target="_blank" class="btn btn-light border btn-sm flex-grow-1 rounded-pill">KK</a>
+                                            <div class="mt-3 d-flex gap-2">
+                                                <a href="/${b.ktp}" target="_blank" class="btn btn-outline-secondary btn-sm flex-grow-1">KTP</a>
+                                                <a href="/${b.kk}" target="_blank" class="btn btn-outline-secondary btn-sm flex-grow-1">KK</a>
                                             </div>
                                         </div>
                                     </div>
@@ -430,15 +311,29 @@ app.get('/admin', checkAuth, (req, res) => {
                     </div>
                 </div>
             </div>
+
+            <script>
+                function kosongkanData() {
+                    if (confirm("PERINGATAN: Apakah Anda yakin ingin menghapus SEMUA data pendaftar? Tindakan ini tidak bisa dibatalkan.")) {
+                        fetch('/admin/kosongkan', { method: 'POST' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if(data.success) {
+                                alert(data.message);
+                                location.reload();
+                            } else {
+                                alert("Gagal: " + data.message);
+                            }
+                        });
+                    }
+                }
+            </script>
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-            </body>
-            </html>`;
-            
-            res.send(html);
-        } catch (e) {
-            res.send("Terjadi kesalahan: " + e.message);
-        }
+        </body>
+        </html>`;
+        res.send(html);
     });
 });
 
-app.listen(3000, () => console.log('Server running: http://localhost:3000'));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => { console.log(\`Server berjalan di port \${PORT}\`); });
