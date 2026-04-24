@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pendaftaran Santri Baru - Pondok Pesantren Ihyauth Tholibin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        
+        body { background-color: #f0f4f8; font-family: 'Inter', sans-serif; color: #334155; scroll-behavior: smooth; }
+
+        /* --- STYLE LANDING PAGE (POSTER) --- */
+        .landing-page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e4d2b, #2e7d32);
+            padding: 20px;
+        }
+        .poster-wrapper {
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            z-index: 10;
+        }
+        .poster-img {
+            width: 100%;
+            border-radius: 25px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            border: 8px solid white;
+        }
+        .btn-daftar-sekarang {
+            background: #ffc107;
+            color: #1e4d2b;
+            font-weight: 800;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            border: none;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            text-decoration: none;
+            margin-top: 30px;
+        }
+        .btn-daftar-sekarang:hover {
+            background: white;
+            color: #2e7d32;
+            transform: scale(1.05);
+        }
+
+        /* --- STYLE FORMULIR --- */
+        .form-header { background: #1e4d2b; color: white; padding: 60px 0 140px 0; text-align: center; }
+        .kop-pondok {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 3px double #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo-pondok { width: 80px; height: 80px; object-fit: contain; margin-right: 20px; }
+        .identitas-pondok h4 { margin: 0; font-weight: 700; color: #1e4d2b; text-transform: uppercase; }
+        .main-card { border: none; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); margin-top: -100px; padding: 40px; background: white; }
+        .section-title { font-weight: 700; color: #2e7d32; border-left: 4px solid #2e7d32; padding-left: 15px; margin-bottom: 25px; margin-top: 30px; }
+        .form-control, .form-select { border-radius: 12px; padding: 12px 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; }
+        .file-box { background-color: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 12px; padding: 15px; }
+        .btn-submit { background: linear-gradient(135deg, #1e4d2b, #2e7d32); border: none; border-radius: 12px; padding: 18px; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+    <div class="landing-page">
+        <div class="poster-wrapper text-center">
+            <img src="/assets/psb.jpg" alt="Poster PSB" class="poster-img">
+            <br>
+            <a href="#formulir-pendaftaran" class="btn btn-daftar-sekarang">
+                <i class="fas fa-edit me-2"></i> DAFTAR SEKARANG
+            </a>
+        </div>
+    </div>
+
+    <div class="form-header" id="formulir-pendaftaran">
+        <div class="container">
+            <h2 class="fw-bold">Penerimaan Santri Baru (PSB)</h2>
+            <p class="opacity-75">Tahun Ajaran 2026/2027</p>
+        </div>
+    </div>
+
+    <div class="container mb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+                <div class="card main-card">
+                    
+                    <div class="kop-pondok">
+                        <img src="/assets/logo-pondok.png" alt="Logo" class="logo-pondok">
+                        <div class="identitas-pondok">
+                            <h4>Pondok Pesantren Ihyauth Tholibin</h4>
+                            <p class="mb-0">Jl. Pasar Jumat, Semarang Jaya, Air Hitam, Lampung Barat</p>
+                        </div>
+                    </div>
+
+                    <h4 class="text-center fw-bold mb-4">FORMULIR PENDAFTARAN ONLINE</h4>
+
+                    <form action="/daftar" method="POST" enctype="multipart/form-data">
+                        <h5 class="section-title">Data Pribadi Santri</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Nama Lengkap</label>
+                                <input type="text" name="nama" class="form-control" placeholder="Ahmad Fauzi" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Jenjang Pendidikan</label>
+                                <select name="jenjang" class="form-select" required>
+                                    <option value="" selected disabled>Pilih Jenjang</option>
+                                    <option value="SMP/MTs">SMP/MTs</option>
+                                    <option value="SMA/MA">SMA/MA</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">NISN</label>
+                                <input type="number" name="nisn" class="form-control" placeholder="10 Digit NISN" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">NIK</label>
+                                <input type="number" name="nik" class="form-control" placeholder="16 Digit NIK" required>
+                            </div>
+                        </div>
+
+                        <h5 class="section-title">Data Orang Tua / Wali</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Nama Ayah</label>
+                                <input type="text" name="namaAyah" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Pekerjaan Ayah</label>
+                                <input type="text" name="kerjaAyah" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Nama Ibu</label>
+                                <input type="text" name="namaIbu" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">WhatsApp (Aktif)</label>
+                                <input type="number" name="whatsapp" class="form-control" placeholder="08xxx" required>
+                            </div>
+                        </div>
+
+                        <h5 class="section-title">Upload Berkas</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="file-box">
+                                    <label class="form-label small fw-bold">Foto Santri</label>
+                                    <input type="file" name="foto" class="form-control" accept="image/*" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="file-box">
+                                    <label class="form-label small fw-bold">Kartu Keluarga</label>
+                                    <input type="file" name="kk" class="form-control" accept="image/*" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-5">
+                            <button type="submit" class="btn btn-submit btn-success w-100 shadow">
+                                <i class="fas fa-paper-plane me-2"></i> KIRIM DATA PENDAFTARAN
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

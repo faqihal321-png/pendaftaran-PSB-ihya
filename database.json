@@ -1,0 +1,41 @@
+[
+  {
+    "nisn": "213123123",
+    "nik": "23131231",
+    "nama": "faqih",
+    "alamat": "lampung",
+    "whatsapp": "639472387492",
+    "jenjang": "SMP/MTs",
+    "namaAyah": "gan",
+    "kerjaAyah": "dasda",
+    "namaIbu": "sdasd",
+    "kerjaIbu": "asdasdasd",
+    "berkas": {
+      "ktp": "uploads/1776924875229-7143dcd9-295c-42d8-a5fa-2b7e173632f4.jpg",
+      "ijazah": "uploads/1776924875239-7d3c2b85-fdad-4f7c-8b8f-8197a5706122.JPG",
+      "foto": "uploads/1776924875240-IMG_3964.jpg",
+      "kk": "uploads/1776924875243-IMG_3168.JPG"
+    },
+    "tanggal": "4/23/2026, 1:14:35 PM"
+  },
+  {
+    "nama": "aqlul faqih almkahi",
+    "jenjang": "SMA/MA",
+    "nisn": "1234567890",
+    "nik": "098765432142",
+    "alamat": "semarang jaya,air hiatm ,al",
+    "namaAyah": "ahmad",
+    "kerjaAyah": "tani",
+    "namaIbu": "sri",
+    "kerjaIbu": "tani",
+    "whatsapp": "0845298505702",
+    "waOrangTua": "085877885863823",
+    "berkas": {
+      "ktp": "uploads/1776928573018-7143dcd9-295c-42d8-a5fa-2b7e173632f4.jpg",
+      "ijazah": "uploads/1776928573024-IMG_3168.JPG",
+      "foto": "uploads/1776928573015-1BB94E51-5C3C-4C53-A60D-BBBE27180DA6.JPG",
+      "kk": "uploads/1776928573021-IMG_3964.jpg"
+    },
+    "tanggal": "4/23/2026, 2:16:13 PM"
+  }
+]
