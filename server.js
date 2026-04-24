@@ -9,7 +9,7 @@ const app = express();
 
 // --- CONFIGURATION ---
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json()); // Tambahan agar bisa membaca JSON dari fetch
+app.use(bodyParser.json()); 
 app.use('/uploads', express.static('uploads'));
 app.use('/assets', express.static('assets')); 
 
@@ -42,11 +42,12 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
+// UPDATE: Menambahkan field alamat dan kerjaIbu ke dalam database
 app.post('/daftar', upload.fields([
     { name: 'ktp' }, { name: 'ijazah' }, { name: 'foto' }, { name: 'kk' }
 ]), (req, res) => {
     const dataPendaftar = {
-        ...req.body,
+        ...req.body, // Ini otomatis mengambil nama, nisn, nik, jenjang, whatsapp, namaAyah, kerjaAyah, namaIbu, kerjaIbu, dan alamat
         berkas: {
             ktp: req.files['ktp'] ? req.files['ktp'][0].path : null,
             ijazah: req.files['ijazah'] ? req.files['ijazah'][0].path : null,
@@ -115,7 +116,7 @@ app.get('/admin/export', checkAuth, async (req, res) => {
             { header: 'Nama Ayah', key: 'namaAyah', width: 20 },
             { header: 'Pekerjaan Ayah', key: 'kerjaAyah', width: 20 },
             { header: 'Nama Ibu', key: 'namaIbu', width: 20 },
-            { header: 'Pekerjaan Ibu', key: 'kerjaI Ibu', width: 20 }
+            { header: 'Pekerjaan Ibu', key: 'kerjaIbu', width: 20 }
         ];
 
         worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFF' } };
@@ -150,7 +151,7 @@ app.get('/admin/export', checkAuth, async (req, res) => {
     } catch (e) { res.status(500).send("Gagal ekspor: " + e.message); }
 });
 
-// --- ROUTE: KOSONGKAN DATA (TAMBAHAN BARU) ---
+// --- ROUTE: KOSONGKAN DATA ---
 app.post('/admin/kosongkan', checkAuth, (req, res) => {
     fs.writeFile('database.json', JSON.stringify([], null, 2), (err) => {
         if (err) return res.json({ success: false, message: "Gagal mengosongkan data." });
@@ -221,32 +222,21 @@ app.get('/admin', checkAuth, (req, res) => {
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
                 body { background-color: #f8fafc; font-family: 'Inter', sans-serif; color: #334155; }
-                
-                /* Navbar */
                 .navbar-custom { background: linear-gradient(135deg, #1e4d2b, #2e7d32); padding: 15px 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; min-height: 100px; position: relative; }
                 .nav-logout-left { position: absolute; left: 40px; }
                 .nav-kop-right { position: absolute; right: 40px; display: flex; align-items: center; color: white; }
-                
-                /* Desktop Table Style */
                 .main-card { border: none; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); background: white; padding: 25px; }
                 .foto-circle { width: 50px; height: 50px; object-fit: cover; border-radius: 12px; }
                 .modal-info-box { background-color: #f8fafc; border-radius: 12px; padding: 12px; margin-bottom: 10px; border: 1px solid #f1f5f9; }
                 .label-custom { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: 600; display: block; }
                 .data-value { font-weight: 600; color: #1e293b; }
-
-                /* Mobile Card Layout (Disembunyikan di Desktop) */
                 .mobile-card-container { display: none; }
-
                 @media (max-width: 768px) {
                     .navbar-custom { padding: 15px; flex-direction: column; min-height: auto; gap: 10px; }
                     .nav-logout-left, .nav-kop-right { position: static; margin-bottom: 5px; }
-                    .table-responsive { display: none; } /* Sembunyikan tabel di HP */
-                    .mobile-card-container { display: block; } /* Munculkan Card di HP */
-                    
-                    .card-santri-mobile { 
-                        background: white; border-radius: 20px; padding: 15px; margin-bottom: 15px; 
-                        box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;
-                    }
+                    .table-responsive { display: none; }
+                    .mobile-card-container { display: block; }
+                    .card-santri-mobile { background: white; border-radius: 20px; padding: 15px; margin-bottom: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
                     .header-mobile { display: flex; align-items: center; margin-bottom: 12px; }
                     .foto-mobile { width: 60px; height: 60px; border-radius: 12px; object-fit: cover; margin-right: 12px; }
                     .info-grid-mobile { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -283,8 +273,6 @@ app.get('/admin', checkAuth, (req, res) => {
             pendaftar.forEach((p, index) => {
                 const b = p.berkas || {};
                 const modalId = `modal${index}`;
-                
-                // Tambahkan baris tabel untuk Desktop
                 html += `
                     <tr>
                         <td>${index + 1}</td>
@@ -312,7 +300,6 @@ app.get('/admin', checkAuth, (req, res) => {
             pendaftar.forEach((p, index) => {
                 const b = p.berkas || {};
                 const modalId = `modal${index}`;
-                
                 html += `
                     <div class="card-santri-mobile">
                         <div class="header-mobile">
@@ -360,9 +347,9 @@ app.get('/admin', checkAuth, (req, res) => {
                                         <div class="row g-2">
                                             <div class="col-6"><div class="modal-info-box"><span class="label-custom">NISN</span><span class="data-value">${p.nisn}</span></div></div>
                                             <div class="col-6"><div class="modal-info-box"><span class="label-custom">NIK</span><span class="data-value">${p.nik}</span></div></div>
-                                            <div class="col-12"><div class="modal-info-box"><span class="label-custom">Alamat</span><span class="data-value small">${p.alamat}</span></div></div>
+                                            <div class="col-12"><div class="modal-info-box"><span class="label-custom">Alamat</span><span class="data-value small">${p.alamat || '-'}</span></div></div>
                                             <div class="col-6"><div class="modal-info-box"><span class="label-custom">Ayah</span><span class="data-value">${p.namaAyah} (${p.kerjaAyah})</span></div></div>
-                                            <div class="col-6"><div class="modal-info-box"><span class="label-custom">Ibu</span><span class="data-value">${p.namaIbu} (${p.kerjaIbu})</span></div></div>
+                                            <div class="col-6"><div class="modal-info-box"><span class="label-custom">Ibu</span><span class="data-value">${p.namaIbu} (${p.kerjaIbu || '-'})</span></div></div>
                                         </div>
                                         <div class="mt-3 d-flex gap-2">
                                             <a href="/${b.ktp}" target="_blank" class="btn btn-outline-secondary btn-sm flex-grow-1 rounded-pill">KTP</a>
