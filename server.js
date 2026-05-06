@@ -92,11 +92,72 @@ app.post('/login', (req, res) => {
 app.get('/admin', (req, res) => {
     if (!req.session.isLoggedIn) return res.redirect('/login');
     const data = readData();
+    
+    // Membuat baris tabel dari data JSON
+    const rows = data.map((p, index) => `
+        <tr>
+            <td>${index + 1}</td>
+            <td>${p.tanggal}</td>
+            <td><b>${p.nama}</b></td>
+            <td>${p.jenjang}</td>
+            <td><a href="https://wa.me/${p.whatsapp}" target="_blank">${p.whatsapp}</a></td>
+            <td>
+                <div class="btn-group">
+                    ${p.berkas.foto ? `<a href="/uploads/${p.berkas.foto}" target="_blank" class="btn btn-sm btn-outline-primary">Foto</a>` : ''}
+                    ${p.berkas.kk ? `<a href="/uploads/${p.berkas.kk}" target="_blank" class="btn btn-sm btn-outline-secondary">KK</a>` : ''}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+
     res.send(`
-        <h1>Dashboard Admin (Permanent Storage)</h1>
-        <p>Total: ${data.length}</p>
-        <a href="/admin/export">Download Excel</a> | <a href="/logout">Logout</a>
-        <hr><pre>${JSON.stringify(data, null, 2)}</pre>
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <meta charset="UTF-8">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <title>Panel Admin PSB</title>
+            <style>
+                body { background-color: #f8f9fa; padding: 30px; }
+                .main-card { border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                .table thead { background-color: #1e4d2b; color: white; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold text-success">Dashboard Admin PSB</h2>
+                    <div>
+                        <a href="/admin/export" class="btn btn-success shadow-sm">
+                            <i class="fas fa-file-excel"></i> Download Excel
+                        </a>
+                        <a href="/logout" class="btn btn-danger shadow-sm ms-2">Logout</a>
+                    </div>
+                </div>
+                
+                <div class="card main-card p-4">
+                    <p class="text-muted">Total Pendaftar: <span class="badge bg-primary">${data.length}</span></p>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Tanggal</th>
+                                    <th>Nama Santri</th>
+                                    <th>Jenjang</th>
+                                    <th>WhatsApp</th>
+                                    <th>Berkas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows || '<tr><td colspan="6" class="text-center">Belum ada data pendaftar.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
     `);
 });
 
