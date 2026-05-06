@@ -10,7 +10,6 @@ const app = express();
 
 /**
  * --- KONFIGURASI PENYIMPANAN PERMANEN (RAILWAY VOLUME) ---
- * Menjamin data tidak hilang saat Anda update kode.
  */
 const VOLUME_PATH = '/app/data_pondok';
 const isProduction = process.env.RAILWAY_ENVIRONMENT_ID ? true : false;
@@ -19,7 +18,6 @@ const BASE_DIR = isProduction ? VOLUME_PATH : __dirname;
 const DATA_FILE = path.join(BASE_DIR, 'database.json');
 const UPLOAD_DIR = path.join(BASE_DIR, 'uploads');
 
-// Pastikan folder tersedia
 if (!fs.existsSync(BASE_DIR)) fs.mkdirSync(BASE_DIR, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -79,7 +77,7 @@ app.post('/daftar', upload.fields([
         saveData(data);
         res.send(`
             <div style="text-align:center; font-family:sans-serif; margin-top:100px; color:#1e4d2b;">
-                <h2>✅ Pendaftaran Berhasil Berhasil!</h2>
+                <h2>✅ Pendaftaran Berhasil!</h2>
                 <p>Data santri telah disimpan secara permanen.</p>
                 <a href="/" style="text-decoration:none; background:#1e4d2b; color:white; padding:10px 20px; border-radius:5px;">Kembali</a>
             </div>
@@ -88,7 +86,7 @@ app.post('/daftar', upload.fields([
 });
 
 /**
- * --- ADMIN PANEL ---
+ * --- ADMIN PANEL DENGAN SIDEBAR ---
  */
 
 app.get('/login', (req, res) => {
@@ -147,39 +145,79 @@ app.get('/admin', (req, res) => {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
             <title>Panel Admin PSB</title>
             <style>
-                body { background-color: #f4f7f6; padding: 25px; font-family: sans-serif; }
+                body { background-color: #f4f7f6; font-family: sans-serif; overflow-x: hidden; }
+                .sidebar { min-width: 250px; max-width: 250px; min-height: 100vh; background: #1e4d2b; color: white; transition: all 0.3s; }
+                .sidebar .nav-link { color: rgba(255,255,255,0.7); border-radius: 10px; margin: 5px 15px; }
+                .sidebar .nav-link:hover, .sidebar .nav-link.active { background: rgba(255,255,255,0.1); color: white; }
+                .sidebar .nav-link i { width: 25px; }
+                .main-content { width: 100%; padding: 25px; }
                 .main-card { border-radius: 20px; border:none; box-shadow: 0 10px 30px rgba(0,0,0,0.05); background: white; }
                 .table thead { background-color: #1e4d2b; color: white; }
+                .nav-pills .nav-link.active { background-color: rgba(255,255,255,0.2) !important; }
             </style>
         </head>
         <body>
-            <div class="container-fluid">
-                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
-                    <div>
-                        <h2 class="fw-bold text-success mb-0">Dashboard Admin PSB</h2>
-                        <p class="text-muted small mb-0">Tahun Ajaran 2026/2027</p>
+            <div class="d-flex">
+                <!-- SIDEBAR -->
+                <nav class="sidebar shadow-lg">
+                    <div class="p-4 text-center">
+                        <h4 class="fw-bold mb-0">ADMIN PSB</h4>
+                        <p class="small opacity-50">Panel Manajemen</p>
                     </div>
-                    <div class="d-flex gap-2 mt-2">
-                        <div class="p-2 px-3 bg-white border rounded-pill fw-bold text-success shadow-sm">TOTAL: ${data.length}</div>
-                        <a href="/admin/export" class="btn btn-success rounded-pill shadow-sm">EXCEL</a>
-                        <a href="/logout" class="btn btn-outline-danger rounded-pill">LOGOUT</a>
+                    <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+                        <button class="nav-link text-start border-0 mb-2" id="v-pills-dash-tab" data-bs-toggle="pill" data-bs-target="#v-pills-dash" type="button" role="tab"><i class="fas fa-home me-2"></i> Dashboard</button>
+                        <button class="nav-link active text-start border-0 mb-2" id="v-pills-santri-tab" data-bs-toggle="pill" data-bs-target="#v-pills-santri" type="button" role="tab"><i class="fas fa-user-graduate me-2"></i> Data Santri</button>
+                        <hr class="mx-3">
+                        <a href="/logout" class="nav-link text-start text-danger"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
                     </div>
-                </div>
-                
-                <div class="card main-card p-4">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead>
-                                <tr class="text-center">
-                                    <th>No</th><th>Waktu</th><th>Nama Lengkap</th><th>Jenjang</th><th>Berkas</th><th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${rows || '<tr><td colspan="6" class="text-center py-4">Belum ada data masuk.</td></tr>'}
-                            </tbody>
-                        </table>
+                </nav>
+
+                <!-- MAIN CONTENT -->
+                <div class="main-content">
+                    <div class="tab-content" id="v-pills-tabContent">
+                        
+                        <!-- TAB DASHBOARD (KOSONG) -->
+                        <div class="tab-pane fade" id="v-pills-dash" role="tabpanel">
+                            <h2 class="fw-bold text-success">Dashboard</h2>
+                            <p class="text-muted">Selamat datang di panel administrasi.</p>
+                            <div class="main-card p-5 text-center mt-4">
+                                <i class="fas fa-chart-line fa-4x text-light mb-3"></i>
+                                <h4 class="text-muted">Statistik akan muncul di sini</h4>
+                            </div>
+                        </div>
+
+                        <!-- TAB DATA SANTRI (TABEL) -->
+                        <div class="tab-pane fade show active" id="v-pills-santri" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                                <div>
+                                    <h2 class="fw-bold text-success mb-0">Data Pendaftar</h2>
+                                    <p class="text-muted small mb-0">Manajemen santri baru 2026/2027</p>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <div class="p-2 px-3 bg-white border rounded-pill fw-bold text-success shadow-sm">TOTAL: ${data.length}</div>
+                                    <a href="/admin/export" class="btn btn-success rounded-pill shadow-sm"><i class="fas fa-file-excel me-1"></i> EXCEL</a>
+                                </div>
+                            </div>
+                            
+                            <div class="card main-card p-4">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead>
+                                            <tr class="text-center">
+                                                <th>No</th><th>Waktu</th><th>Nama Lengkap</th><th>Jenjang</th><th>Berkas</th><th>Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${rows || '<tr><td colspan="6" class="text-center py-4 text-muted">Belum ada data masuk.</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
