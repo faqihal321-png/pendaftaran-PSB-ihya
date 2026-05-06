@@ -8,7 +8,7 @@ const ExcelJS = require('exceljs');
 
 const app = express();
 
-// --- KONFIGURASI PENYIMPANAN PERMANEN (RAILWAY VOLUME) ---
+// --- KONFIGURASI PENYIMPANAN PERMANEN ---
 const VOLUME_PATH = '/app/data_pondok';
 const isProduction = process.env.RAILWAY_ENVIRONMENT_ID ? true : false;
 const BASE_DIR = isProduction ? VOLUME_PATH : __dirname;
@@ -157,7 +157,6 @@ app.get('/admin', (req, res) => {
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
     const santriMA = data.filter(p => p.jenjang === 'MA').length;
 
-    // --- DATA SANTRI ---
     const rowsSantri = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
         const fotoUrl = p.berkas.foto ? `/uploads/${p.berkas.foto}` : 'https://via.placeholder.com/40x50';
@@ -177,7 +176,6 @@ app.get('/admin', (req, res) => {
             </tr>`;
     }).join('');
 
-    // --- CARDS PEMBAYARAN ---
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agt', 'Sept', 'Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
         const tahunDaftarInt = parseInt(p.tahunDaftar || "2025");
@@ -345,9 +343,9 @@ app.get('/admin', (req, res) => {
                 }
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
-                    document.getElementById('isiM').innerHTML = `
-                        <div class="d-flex align-items-center mb-4"><img src="/uploads/${d.berkas.foto}" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;"><div><h3 class="fw-bold text-success mb-0">${d.nama}</h3><p class="text-muted small">${d.jenjang}</p></div></div>
-                        <div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6><p class="small">NIK: ${d.nik}<br>Alamat: ${d.alamat}</p></div><div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">Ayah: ${d.namaAyah}<br>WA: ${d.whatsapp}</p></div></div>`;
+                    document.getElementById('isiM').innerHTML = \`
+                        <div class="d-flex align-items-center mb-4"><img src="/uploads/\${d.berkas.foto}" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;"><div><h3 class="fw-bold text-success mb-0">\${d.nama}</h3><p class="text-muted small">\${d.jenjang}</p></div></div>
+                        <div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6><p class="small">NIK: \${d.nik}<br>Alamat: \${d.alamat}</p></div><div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">Ayah: \${d.namaAyah}<br>WA: \${d.whatsapp}</p></div></div>\`;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
             </script>
