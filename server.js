@@ -94,21 +94,30 @@ app.get('/admin', (req, res) => {
     const data = readData();
     
     // Membuat baris tabel dari data JSON
-    const rows = data.map((p, index) => `
+   const rows = data.map((p, index) => {
+    // Fungsi pembantu untuk membuat tombol jika file ada
+    const createBtn = (file, label, colorClass) => {
+        return file ? `<a href="/uploads/${file}" target="_blank" class="btn btn-sm ${colorClass} me-1">${label}</a>` : '';
+    };
+
+    return `
         <tr>
             <td>${index + 1}</td>
             <td>${p.tanggal}</td>
             <td><b>${p.nama}</b></td>
             <td>${p.jenjang}</td>
-            <td><a href="https://wa.me/${p.whatsapp}" target="_blank">${p.whatsapp}</a></td>
+            <td><a href="https://wa.me/${p.whatsapp}" target="_blank" class="text-decoration-none">${p.whatsapp}</a></td>
             <td>
-                <div class="btn-group">
-                    ${p.berkas.foto ? `<a href="/uploads/${p.berkas.foto}" target="_blank" class="btn btn-sm btn-outline-primary">Foto</a>` : ''}
-                    ${p.berkas.kk ? `<a href="/uploads/${p.berkas.kk}" target="_blank" class="btn btn-sm btn-outline-secondary">KK</a>` : ''}
+                <div class="d-flex flex-wrap">
+                    ${createBtn(p.berkas.foto, 'Foto', 'btn-primary')}
+                    ${createBtn(p.berkas.kk, 'KK', 'btn-outline-secondary')}
+                    ${createBtn(p.berkas.ktp, 'KTP', 'btn-outline-info')}
+                    ${createBtn(p.berkas.ijazah, 'Ijazah', 'btn-outline-success')}
                 </div>
             </td>
         </tr>
-    `).join('');
+    `;
+}).join('');[cite: 7]
 
     res.send(`
         <!DOCTYPE html>
