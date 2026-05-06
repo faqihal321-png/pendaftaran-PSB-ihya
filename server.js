@@ -14,12 +14,13 @@ const isProduction = process.env.RAILWAY_ENVIRONMENT_ID ? true : false;
 const BASE_DIR = isProduction ? VOLUME_PATH : __dirname;
 
 const DATA_FILE = path.join(BASE_DIR, 'database.json');
+const CONFIG_FILE = path.join(BASE_DIR, 'config.json');
 const UPLOAD_DIR = path.join(BASE_DIR, 'uploads');
 
 if (!fs.existsSync(BASE_DIR)) fs.mkdirSync(BASE_DIR, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// --- FUNGSI PEMBANTU DATA ---
+// --- FUNGSI PEMBANTU DATA & CONFIG ---
 const readData = () => {
     try {
         if (!fs.existsSync(DATA_FILE)) { fs.writeFileSync(DATA_FILE, '[]'); return []; }
@@ -28,6 +29,18 @@ const readData = () => {
     } catch (e) { return []; }
 };
 const saveData = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+
+const readConfig = () => {
+    try {
+        if (!fs.existsSync(CONFIG_FILE)) {
+            const def = { biayaPondok: "500.000", biayaMakan: "400.000" };
+            fs.writeFileSync(CONFIG_FILE, JSON.stringify(def));
+            return def;
+        }
+        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+    } catch (e) { return { biayaPondok: "0", biayaMakan: "0" }; }
+};
+const saveConfig = (cfg) => fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
 
 // --- MIDDLEWARE ---
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -84,7 +97,13 @@ app.post('/admin/update-status', (req, res) => {
     res.status(404).json({ success: false });
 });
 
-// --- ADMIN PANEL ---
+app.post('/admin/update-config', (req, res) => {
+    if (!req.session.isLoggedIn) return res.status(403).send("Unauthorized");
+    saveConfig(req.body);
+    res.json({ success: true });
+});
+
+// --- ADMIN LOGIN ---
 app.post('/login', (req, res) => {
     if (req.body.user === 'admin' && req.body.pass === 'pondok123') {
         req.session.isLoggedIn = true;
@@ -125,6 +144,7 @@ app.get('/login', (req, res) => {
 app.get('/admin', (req, res) => {
     if (!req.session.isLoggedIn) return res.redirect('/login');
     const data = readData();
+    const config = readConfig();
     
     // Statistik
     const totalSantri = data.length;
@@ -133,11 +153,10 @@ app.get('/admin', (req, res) => {
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
     const santriMA = data.filter(p => p.jenjang === 'MA').length;
     
-    // Rows untuk Tabel Santri
+    // Rows Santri
     const rowsSantri = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
         const fotoUrl = p.berkas.foto ? `/uploads/${p.berkas.foto}` : 'https://via.placeholder.com/35x45';
-        
         return `
             <tr class="santri-row" data-name="${p.nama.toLowerCase()}">
                 <td class="text-center small">${index + 1}</td>
@@ -155,10 +174,9 @@ app.get('/admin', (req, res) => {
         `;
     }).join('');
 
-    // List Pembayaran (Dua Kolom: Pondok & Makan)
+    // List Pembayaran
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agt', 'Sept', 'Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-        
         const createChecklist = (prefix) => months.map(m => `
             <div class="col-4 col-md-3 mb-2">
                 <div class="form-check p-1 border rounded bg-white shadow-sm" style="font-size: 0.65rem;">
@@ -177,19 +195,13 @@ app.get('/admin', (req, res) => {
                     </div>
                     <div class="card-body p-3">
                         <div class="row g-3">
-                            <!-- Kolom Kiri: Bulanan Pondok -->
-                            <div class="col-md-6 border-end">
-                                <p class="fw-bold text-success border-bottom pb-1 mb-2 small text-center"><i class="fas fa-mosque me-1"></i> BULANAN PONDOK</p>
-                                <div class="row gx-1">
-                                    ${createChecklist('pondok')}
-                                </div>
+                            <div class="col-md-6 border-end text-center">
+                                <p class="fw-bold text-success border-bottom pb-1 mb-2 small"><i class="fas fa-mosque me-1"></i> PONDOK (Rp ${config.biayaPondok})</p>
+                                <div class="row gx-1">${createChecklist('pondok')}</div>
                             </div>
-                            <!-- Kolom Kanan: Bulanan Makan -->
-                            <div class="col-md-6">
-                                <p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-center"><i class="fas fa-utensils me-1"></i> BULANAN MAKAN</p>
-                                <div class="row gx-1">
-                                    ${createChecklist('makan')}
-                                </div>
+                            <div class="col-md-6 text-center">
+                                <p class="fw-bold text-primary border-bottom pb-1 mb-2 small"><i class="fas fa-utensils me-1"></i> MAKAN (Rp ${config.biayaMakan})</p>
+                                <div class="row gx-1">${createChecklist('makan')}</div>
                             </div>
                         </div>
                     </div>
@@ -239,39 +251,52 @@ app.get('/admin', (req, res) => {
                                 <div class="col-md-4"><div class="card stat-card bg-success p-3"><h6>Aktif</h6><h2>${santriAktif}</h2></div></div>
                                 <div class="col-md-4"><div class="card stat-card bg-danger p-3"><h6>Tidak Aktif</h6><h2>${santriTidakAktif}</h2></div></div>
                                 <div class="col-md-4"><div class="card stat-card bg-primary p-3"><h6>Total</h6><h2>${totalSantri}</h2></div></div>
-                                <div class="col-md-6"><div class="card stat-card bg-info p-4"><h5>MTs</h5><h1>${santriMTs}</h1></div></div>
-                                <div class="col-md-6"><div class="card stat-card bg-warning text-dark p-4"><h5>MA</h5><h1>${santriMA}</h1></div></div>
+                                <div class="col-md-6"><div class="card border-0 shadow-sm bg-white p-4 rounded-4 text-success">
+                                    <h5><i class="fas fa-money-bill-wave me-2"></i>Tarif Pondok: <b>Rp ${config.biayaPondok}</b></h5>
+                                </div></div>
+                                <div class="col-md-6"><div class="card border-0 shadow-sm bg-white p-4 rounded-4 text-primary">
+                                    <h5><i class="fas fa-utensils me-2"></i>Tarif Makan: <b>Rp ${config.biayaMakan}</b></h5>
+                                </div></div>
                             </div>
                         </div>
 
                         <!-- DATA SANTRI -->
                         <div class="tab-pane fade" id="v-santri">
                             <div class="d-flex justify-content-between mb-3 align-items-center">
-                                <h4 class="fw-bold text-success">Data Santri</h4>
-                                <input class="form-control w-25 search-box" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value)">
+                                <h4 class="fw-bold text-success text-uppercase">Data Santri</h4>
+                                <input class="form-control w-25 search-box shadow-sm" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value)">
                             </div>
-                            <div class="card border-0 shadow-sm p-3 rounded-4">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle">
-                                        <thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Status</th><th>Aksi</th></tr></thead>
-                                        <tbody>${rowsSantri || '<tr><td colspan="6" class="text-center py-4">Kosong</td></tr>'}</tbody>
-                                    </table>
-                                </div>
-                            </div>
+                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="6" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
                         </div>
 
-                        <!-- PEMBAYARAN (2 KOLOM: PONDOK & MAKAN) -->
+                        <!-- PEMBAYARAN -->
                         <div class="tab-pane fade" id="v-bayar">
                             <div class="d-flex justify-content-between mb-4 align-items-center">
-                                <h4 class="fw-bold text-success">Ceklis Pembayaran</h4>
+                                <h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran</h4>
                                 <input class="form-control w-25 search-box shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)">
                             </div>
-                            <div id="payment-container">
-                                ${cardsBayar || '<div class="text-center p-5">Belum ada data santri.</div>'}
-                            </div>
+                            <div id="payment-container">${cardsBayar || '<div class="text-center p-5">Belum ada data.</div>'}</div>
                         </div>
 
-                        <div class="tab-pane fade" id="v-set"><h4>Setting Segera Hadir</h4></div>
+                        <!-- SETTING (BARU) -->
+                        <div class="tab-pane fade" id="v-set">
+                            <h4 class="fw-bold text-success text-uppercase mb-4">Pengaturan Biaya Bulanan</h4>
+                            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 500px;">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Biaya Pondok (Rp)</label>
+                                    <input type="text" id="cfgPondok" class="form-control" value="${config.biayaPondok}">
+                                    <small class="text-muted">Contoh: 500.000</small>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold">Biaya Makan (Rp)</label>
+                                    <input type="text" id="cfgMakan" class="form-control" value="${config.biayaMakan}">
+                                    <small class="text-muted">Contoh: 400.000</small>
+                                </div>
+                                <button class="btn btn-success fw-bold px-4 shadow-sm" onclick="simpanConfig()">
+                                    <i class="fas fa-save me-2"></i>SIMPAN PERUBAHAN
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -287,6 +312,17 @@ app.get('/admin', (req, res) => {
                 function updateStatus(id, s) {
                     fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) })
                     .then(res => res.json()).then(d => { if(d.success) location.reload(); });
+                }
+                function simpanConfig() {
+                    const pondok = document.getElementById('cfgPondok').value;
+                    const makan = document.getElementById('cfgMakan').value;
+                    fetch('/admin/update-config', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ biayaPondok: pondok, biayaMakan: makan })
+                    }).then(res => res.json()).then(d => { 
+                        if(d.success) { alert('Berhasil disimpan!'); location.reload(); }
+                    });
                 }
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
