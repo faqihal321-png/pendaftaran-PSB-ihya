@@ -290,6 +290,9 @@ app.get('/admin', (req, res) => {
                 .stat-card { border: none; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
                 .pointer-events-none { pointer-events: none; }
                 #hint-bayar { padding: 80px 20px; color: #888; text-align: center; }
+                
+                /* Style khusus cetak PDF */
+                #pdf-content { padding: 20px; background: white; }
             </style>
         </head>
         <body>
@@ -352,17 +355,17 @@ app.get('/admin', (req, res) => {
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
-                // Fungsi Download PDF
+                // Fungsi Cetak PDF
                 function downloadPDF(nama) {
-                    const element = document.getElementById('print-area');
-                    const options = {
-                        margin: 10,
-                        filename: 'Kwitansi_' + nama + '.pdf',
-                        image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 2 },
-                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    const element = document.getElementById('pdf-content');
+                    const opt = {
+                        margin:       10,
+                        filename:     'Kwitansi_' + nama + '.pdf',
+                        image:        { type: 'jpeg', quality: 0.98 },
+                        html2canvas:  { scale: 2 },
+                        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
                     };
-                    html2pdf().set(options).from(element).save();
+                    html2pdf().set(opt).from(element).save();
                 }
 
                 function filterT(c, q, strict) {
@@ -406,7 +409,7 @@ app.get('/admin', (req, res) => {
                     let waLink = 'https://wa.me/' + cleanWa + '?text=' + msg;
                     let tglSkrg = new Date().toLocaleString('id-ID');
 
-                    var html = '<div id="print-area">'; // Tambahan ID untuk print area
+                    var html = '<div id="pdf-content">'; // Area yang akan di-PDF-kan
                     html += '<div class="text-center mb-4">';
                     html += '<h3 class="fw-bold text-success mb-1">KWITANSI LUNAS</h3>';
                     html += '<p class="text-muted small">Pesantren PSB Ihya</p></div>';
@@ -416,10 +419,10 @@ app.get('/admin', (req, res) => {
                     html += '<tr><td class="text-muted small fw-bold bg-light">Nominal</td><td><h5 class="fw-bold mb-0">Rp ' + total + '</h5></td></tr>';
                     html += '<tr><td class="text-muted small fw-bold bg-light">Rincian Bayar</td><td><ul class="mb-0 small" style="padding-left:15px;">' + rincianList + '</ul></td></tr>';
                     html += '<tr><td class="text-muted small fw-bold bg-light">Tanggal</td><td class="small">' + tglSkrg + '</td></tr>';
-                    html += '</table></div>'; // Tutup print area
+                    html += '</table></div>'; 
                     
                     html += '<div class="d-flex flex-column gap-2 mt-4">';
-                    html += '<button class="btn btn-danger fw-bold p-2" onclick="downloadPDF(\\''+nama+'\\')"><i class="fas fa-file-pdf me-2"></i>Download PDF Kwitansi</button>';
+                    html += '<button class="btn btn-danger fw-bold p-2" onclick="downloadPDF(\\''+nama+'\\')"><i class="fas fa-file-pdf me-2"></i>Download PDF</button>';
                     html += '<a href="' + waLink + '" target="_blank" class="btn btn-success fw-bold p-2"><i class="fab fa-whatsapp me-2"></i>Kirim WA ke Orang Tua</a>';
                     html += '<button class="btn btn-light border fw-bold p-2 text-secondary" onclick="location.reload()">Tutup Halaman</button>';
                     html += '</div>';
