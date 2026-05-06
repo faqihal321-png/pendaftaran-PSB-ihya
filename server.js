@@ -63,16 +63,7 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
         const data = readData();
         const config = readConfig();
         const getFileName = (n) => (req.files && req.files[n]) ? req.files[n][0].filename : null;
-        
-        // Membuat format Hari, Tanggal, Bulan, Tahun, Jam
-        const opsiWaktu = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric', 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        };
+        const opsiWaktu = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
         const waktuSkrg = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", ...opsiWaktu });
 
         const baru = {
@@ -81,13 +72,8 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
             status: 'Aktif',
             tahunDaftar: config.tahunAktif,
             pembayaran: {},
-            berkas: { 
-                ktp: getFileName('ktp'), 
-                ijazah: getFileName('ijazah'), 
-                foto: getFileName('foto'), 
-                kk: getFileName('kk') 
-            },
-            tanggal: waktuSkrg // Format: "Senin, 7 Mei 2026 00.00"
+            berkas: { ktp: getFileName('ktp'), ijazah: getFileName('ijazah'), foto: getFileName('foto'), kk: getFileName('kk') },
+            tanggal: waktuSkrg 
         };
         data.push(baru);
         saveData(data);
@@ -177,28 +163,15 @@ app.get('/admin', (req, res) => {
     const rowsSantri = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
         const fotoUrl = p.berkas.foto ? '/uploads/' + p.berkas.foto : 'https://via.placeholder.com/40x50';
-        
         const btnB = (file, label, color) => {
             if(!file) return '<button class="btn btn-xs btn-light disabled" style="font-size:0.65rem; padding:2px 5px;">'+label+'</button>';
             return '<a href="/uploads/'+file+'" target="_blank" class="btn btn-xs '+color+' fw-bold" style="font-size:0.65rem; padding:2px 5px;">'+label+'</a>';
         };
 
-        // --- Logika Bulan Lengkap ---
-        let labelDaftar = p.tahunDaftar || '2025';
-        if (p.tanggal) {
-            const tglPart = p.tanggal.split(',')[0].split('/');
-            if (tglPart.length === 3) {
-                const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-                labelDaftar = bulanIndo[parseInt(tglPart[1])-1] + ' ' + tglPart[2];
-            } else {
-                labelDaftar = p.tanggal;
-            }
-        }
-
-        return '<tr class="santri-row" data-name="'+p.nama.toLowerCase()+'">' +
+        return '<tr class="santri-row" data-name="'+(p.nama || '').toLowerCase()+'">' +
             '<td class="text-center small">'+(index + 1)+'</td>' +
             '<td class="text-center"><img src="'+fotoUrl+'" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>' +
-            '<td><b>'+p.nama+'</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: '+labelDaftar+'</small></td>' +
+            '<td><b>'+p.nama+'</b></td>' +
             '<td class="text-center small">'+(p.jenjang || '-')+'</td>' +
             '<td><div class="d-flex flex-wrap gap-1">' +
                 btnB(p.berkas.foto, 'FOTO', 'btn-primary') +
@@ -216,58 +189,28 @@ app.get('/admin', (req, res) => {
 
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
-        
-        let tahunDaftarAkurat = p.tahunDaftar;
-        if (p.tanggal) {
-            const matchY = p.tanggal.match(/\d{4}/);
-            if (matchY) tahunDaftarAkurat = matchY[0];
-        }
-
-        const tahunDaftarInt = parseInt(tahunDaftarAkurat || "2025");
-        const tahunAktifInt = parseInt(tahunAktif);
         const lunasLalu = months.every(m => (p.pembayaran[tahunLalu] || {})['p-'+m] && (p.pembayaran[tahunLalu] || {})['m-'+m]);
-        
-        const isLocked = (tahunAktifInt > tahunDaftarInt) && !lunasLalu;
-        const belumDaftar = tahunAktifInt < tahunDaftarInt;
         const isTidakAktif = p.status === 'Tidak Aktif';
 
         const createCheck = (prefix) => months.map(m => {
             const lunas = p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif][prefix + '-' + m];
-            return '<div class="col-6 mb-2">' +
-                '<div class="form-check p-1 border rounded '+(lunas ? 'bg-light border-success' : 'bg-white shadow-sm')+'">' +
-                    '<input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="'+prefix+'-'+p.id+'-'+m+'" ' +
-                        'data-id="'+prefix+'-'+m+'" data-price="'+(prefix === 'p' ? config.biayaPondok : config.biayaMakan)+'" ' +
-                        (lunas ? 'checked disabled' : '')+' onchange="hitungTotal('+p.id+')">' +
-                    '<label class="form-check-label fw-bold small '+(lunas ? 'text-success' : '')+'">'+m+'</label>' +
-                '</div>' +
-            '</div>';
+            return '<div class="col-6 mb-2"><div class="form-check p-1 border rounded '+(lunas ? 'bg-light border-success' : 'bg-white shadow-sm')+'">' +
+                    '<input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="'+prefix+'-'+p.id+'-'+m+'" data-id="'+prefix+'-'+m+'" data-price="'+(prefix === 'p' ? config.biayaPondok : config.biayaMakan)+'" '+(lunas ? 'checked disabled' : '')+' onchange="hitungTotal('+p.id+')">' +
+                    '<label class="form-check-label fw-bold small '+(lunas ? 'text-success' : '')+'">'+m+'</label></div></div>';
         }).join('');
 
-        let bodyHTML = '<div class="row g-3 '+(isLocked ? 'pointer-events-none' : '')+'">' +
-            '<div class="col-md-6 border-end text-center">' +
-                '<p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok (Rp '+config.biayaPondok+')</p>' +
-                '<div class="row gx-1">'+createCheck('p')+'</div>' +
-            '</div>' +
-            '<div class="col-md-6 text-center">' +
-                '<p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan (Rp '+config.biayaMakan+')</p>' +
-                '<div class="row gx-1">'+createCheck('m')+'</div>' +
-            '</div>' +
-        '</div>';
+        let bodyHTML = '<div class="row g-3"><div class="col-md-6 border-end text-center"><p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok</p><div class="row gx-1">'+createCheck('p')+'</div></div>' +
+                       '<div class="col-md-6 text-center"><p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan</p><div class="row gx-1">'+createCheck('m')+'</div></div></div>';
 
         if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
-        if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR TAHUN INI</h5></div>';
 
-        // --- TAMBAH DATA WA KE DALAM ONCLICK BUTTON ---
-        return '<div class="bayar-row mb-4" data-name="'+p.nama.toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
-            '<div class="card border-0 shadow-sm rounded-4 '+(isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : '')+'">' +
-                '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
-                    '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+p.nama+' ('+tahunAktif+')</h6>' +
-                    (isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+tahunDaftarAkurat+'</span>')) +
-                '</div>' +
+        return '<div class="bayar-row mb-4" data-name="'+(p.nama || '').toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
+            '<div class="card border-0 shadow-sm rounded-4">' +
+                '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center"><h6 class="mb-0 fw-bold">'+p.nama+'</h6></div>' +
                 '<div class="card-body p-3">'+bodyHTML+'</div>' +
                 '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
-                    '<div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
-                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+p.nama+'\', \''+tahunAktif+'\', \''+(p.whatsapp || '')+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
+                    '<div><span class="text-muted small fw-bold">Total:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
+                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+')"><i class="fas fa-check-circle me-2"></i> KONFIRMASI</button>' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -280,9 +223,7 @@ app.get('/admin', (req, res) => {
             <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-            
             <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
             <title>Panel Admin PSB</title>
             <style>
                 body { background-color: #f4f7f6; font-family: sans-serif; }
@@ -291,14 +232,13 @@ app.get('/admin', (req, res) => {
                 .sidebar .nav-link.active { background: rgba(255,255,255,0.15) !important; color: white; }
                 .main-content { width: 100%; padding: 25px; }
                 .stat-card { border: none; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-                .pointer-events-none { pointer-events: none; }
                 #hint-bayar { padding: 80px 20px; color: #888; text-align: center; }
             </style>
         </head>
         <body>
             <div class="d-flex">
                 <nav class="sidebar shadow">
-                    <div class="p-4 text-center border-bottom border-white border-opacity-10 mb-3"><h4 class="fw-bold">ADMIN PSB</h4></div>
+                    <div class="p-4 text-center border-bottom mb-3"><h4 class="fw-bold">ADMIN PSB</h4></div>
                     <div class="nav flex-column nav-pills">
                         <button class="nav-link active mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-th-large me-2"></i> Dashboard</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-santri"><i class="fas fa-users me-2"></i> Data Santri</button>
@@ -310,195 +250,104 @@ app.get('/admin', (req, res) => {
                 <div class="main-content">
                     <div class="tab-content">
                         <div class="tab-pane fade show active" id="v-dash">
-                            <h3 class="fw-bold text-success mb-4 text-uppercase">Dashboard</h3>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-4"><div class="card stat-card bg-success p-3"><h6>Aktif</h6><h2>${santriAktif}</h2></div></div>
                                 <div class="col-md-4"><div class="card stat-card bg-danger p-3"><h6>Tidak Aktif</h6><h2>${santriTidakAktif}</h2></div></div>
-                                <div class="col-md-4"><div class="card stat-card bg-primary p-3"><h6>Total Santri</h6><h2>${data.length}</h2></div></div>
-                                <div class="col-md-6"><div class="card stat-card bg-info p-4"><h5>MTs</h5><h1>${santriMTs}</h1></div></div>
-                                <div class="col-md-6"><div class="card stat-card bg-warning text-dark p-4"><h5>MA</h5><h1>${santriMA}</h1></div></div>
+                                <div class="col-md-4"><div class="card stat-card bg-primary p-3"><h6>Total</h6><h2>${data.length}</h2></div></div>
                             </div>
                         </div>
                         <div class="tab-pane fade" id="v-santri">
-                            <div class="d-flex justify-content-between mb-3 align-items-center"><h4 class="fw-bold text-success text-uppercase">Data Santri</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value, false)"></div>
-                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
+                            <div class="d-flex justify-content-between mb-3"><h4 class="fw-bold">Data Santri</h4><input class="form-control w-25" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value, false)"></div>
+                            <div class="card p-3 rounded-4 bg-white table-responsive"><table class="table align-middle"><thead><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri}</tbody></table></div>
                         </div>
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran ${tahunAktif}</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
-                            <div id="payment-container">
-                                <div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri untuk mengelola pembayaran.</h5></div>
-                                ${cardsBayar}
-                            </div>
+                            <div class="d-flex justify-content-between mb-4"><h4 class="fw-bold">Ceklis Pembayaran ${tahunAktif}</h4><input class="form-control w-25" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
+                            <div id="payment-container"><div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Cari nama santri...</h5></div>${cardsBayar}</div>
                         </div>
                         <div class="tab-pane fade" id="v-set">
-                            <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4>
-                            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;">
-                                <div class="mb-3"><label class="form-label fw-bold small">Tahun Ajaran Aktif</label><input type="text" id="cfgT" class="form-control" value="${tahunAktif}"></div>
-                                <div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
-                                <div class="mb-4"><label class="form-label fw-bold small">Biaya Makan (Rp)</label><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div>
-                                <button class="btn btn-success fw-bold w-100" onclick="simpanC()">SIMPAN PERUBAHAN</button>
+                            <div class="card p-4 rounded-4 bg-white" style="max-width: 400px;">
+                                <div class="mb-3"><label class="form-label">Tahun Ajaran</label><input id="cfgT" class="form-control" value="${tahunAktif}"></div>
+                                <div class="mb-3"><label class="form-label">Pondok</label><input id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
+                                <div class="mb-3"><label class="form-label">Makan</label><input id="cfgM" class="form-control" value="${config.biayaMakan}"></div>
+                                <button class="btn btn-success w-100" onclick="simpanC()">SIMPAN</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             
+            <div class="modal fade" id="mKwitansi" data-bs-backdrop="static" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-0" id="isiKwitansi"></div></div></div></div>
             <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
-            
-            <div class="modal fade" id="mKwitansi" data-bs-backdrop="static" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content border-0 rounded-4 overflow-hidden shadow-lg">
-                        <div class="modal-body p-4" id="isiKwitansi"></div>
-                    </div>
-                </div>
-            </div>
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
+                const DB_SANTRI = ${JSON.stringify(data)};
+                const THN_AKTIF = "${tahunAktif}";
+
                 function filterT(c, q, strict) {
                     const rows = document.getElementsByClassName(c);
                     const query = q.toLowerCase().trim();
                     const hint = document.getElementById('hint-bayar');
-
                     if (strict) {
                         if (query === "") {
                             if(hint) hint.style.display = 'block';
                             for (let r of rows) r.style.display = 'none';
                         } else {
                             if(hint) hint.style.display = 'none';
-                            for (let r of rows) {
-                                r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
-                            }
+                            for (let r of rows) { r.style.display = (r.getAttribute('data-name')||'').includes(query) ? '' : 'none'; }
                         }
                     } else {
-                        for (let r of rows) {
-                            r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
-                        }
+                        for (let r of rows) { r.style.display = (r.getAttribute('data-name')||'').includes(query) ? '' : 'none'; }
                     }
                 }
-                
+
                 function hitungTotal(id) {
                     const card = document.getElementById('card-' + id);
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
                     let total = 0;
-                    checks.forEach(c => {
-                        let price = c.getAttribute('data-price').replace(/\\./g, '');
-                        total += parseInt(price);
-                    });
+                    checks.forEach(c => { total += parseInt(c.getAttribute('data-price').replace(/\\./g, '')); });
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
 
-                // TAMBAHAN 2: Fungsi untuk download PDF
-                function downloadPDF(namaSantri) {
+                function downloadPDF(nama) {
                     const el = document.getElementById('area-cetak-kwitansi');
-                    const opt = {
-                        margin:       0.5,
-                        filename:     'Kwitansi_' + namaSantri.replace(/ /g, '_') + '.pdf',
-                        image:        { type: 'jpeg', quality: 0.98 },
-                        html2canvas:  { scale: 2 },
-                        jsPDF:        { unit: 'in', format: 'a5', orientation: 'landscape' }
-                    };
+                    const opt = { margin: 0.5, filename: 'Kwitansi_' + nama.replace(/ /g, '_') + '.pdf', jsPDF: { unit: 'in', format: 'a5', orientation: 'landscape' } };
                     html2pdf().set(opt).from(el).save();
                 }
-                
-                function tampilkanKwitansi(nama, total, rincianList, wa) {
-                    // Membersihkan nomor WA, ubah 08 menjadi 628
-                    let cleanWa = wa.replace(/^0/, '62');
-                    
-                    // Format pesan WA menggunakan URL Encoding %0A untuk enter/baris baru
-                    let msg = 'Assalamu%27alaikum.%0A%0APemberitahuan%20dari%20Admin%20PSB%3A%0APembayaran%20santri%20a.n%20*';
-                    msg += encodeURIComponent(nama) + '*%20sebesar%20*Rp%20' + total + '*%20telah%20berhasil%20kami%20terima.%0A%0ATerima%20kasih.';
-                    
+
+                function tampilkanKwitansi(nama, total, listPondok, listMakan, wa) {
+                    let cleanWa = wa ? wa.replace(/^0/, '62') : '';
+                    let msg = 'Assalamu%27alaikum.%20Pembayaran%20' + encodeURIComponent(nama) + '%20Rp%20' + total + '%20berhasil.';
                     let waLink = 'https://wa.me/' + cleanWa + '?text=' + msg;
-                    let tglSkrg = new Date().toLocaleString('id-ID');
-
-                    // TAMBAHAN 3: Membungkus tabel dengan div khusus agar bisa dibaca oleh PDF
-                    var html = '<div id="area-cetak-kwitansi" style="padding: 15px; background: white; color: black;">';
-                    html += '<div class="text-center mb-4">';
-                    html += '<h3 class="fw-bold text-success mb-1">KWITANSI LUNAS</h3>';
-                    html += '<p class="text-muted small">Pesantren PSB Ihya</p></div>';
-                    
-                    html += '<table class="table table-sm table-bordered border-success align-middle">';
-                    html += '<tr><td width="35%" class="text-muted small fw-bold bg-light">Nama Santri</td><td><strong class="text-success">' + nama + '</strong></td></tr>';
-                    html += '<tr><td class="text-muted small fw-bold bg-light">Nominal</td><td><h5 class="fw-bold mb-0">Rp ' + total + '</h5></td></tr>';
-                    html += '<tr><td class="text-muted small fw-bold bg-light">Rincian Bayar</td><td><ul class="mb-0 small" style="padding-left:15px;">' + rincianList + '</ul></td></tr>';
-                    html += '<tr><td class="text-muted small fw-bold bg-light">Tanggal</td><td class="small">' + tglSkrg + '</td></tr>';
-                    html += '</table>';
-                    html += '</div>';
-                    
-                    html += '<div class="d-flex flex-column gap-2 mt-4">';
-                    // TAMBAHAN 4: Tombol Download PDF (Aman dari kutip)
-                    let safeName = nama.replace(/'/g, "\\'");
-                    html += '<button class="btn btn-danger fw-bold p-2 shadow-sm" onclick="downloadPDF(\'' + safeName + '\')"><i class="fas fa-file-pdf me-2"></i>Download PDF Kwitansi</button>';
-                    
-                    html += '<a href="' + waLink + '" target="_blank" class="btn btn-success fw-bold p-2"><i class="fab fa-whatsapp me-2"></i>Kirim WA ke Orang Tua</a>';
-                    html += '<button class="btn btn-light border fw-bold p-2 text-secondary" onclick="location.reload()">Tutup Halaman</button>';
-                    html += '</div>';
-
+                    let html = '<div id="area-cetak-kwitansi" style="padding: 30px; background: white; color: black;">';
+                    html += '<h2 class="text-center fw-bold">KWITANSI LUNAS</h2><p class="text-center">PSB Ihya</p><hr>';
+                    html += '<p>Diterima dari: <b>'+nama+'</b></p><h3>Total: Rp '+total+'</h3>';
+                    html += '<p>Rincian: Pondok ('+listPondok.join(', ')+'), Makan ('+listMakan.join(', ')+')</p></div>';
+                    html += '<div class="p-4 bg-light d-flex flex-column gap-2">';
+                    html += '<button onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\')" class="btn btn-danger fw-bold"><i class="fas fa-file-pdf me-2"></i>DOWNLOAD PDF</button>';
+                    html += '<a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold text-center"><i class="fab fa-whatsapp me-2"></i>KIRIM WA</a>';
+                    html += '<button class="btn btn-secondary fw-bold" onclick="location.reload()">TUTUP</button></div>';
                     document.getElementById('isiKwitansi').innerHTML = html;
-                    var kwitansiModal = new bootstrap.Modal(document.getElementById('mKwitansi'));
-                    kwitansiModal.show();
+                    new bootstrap.Modal(document.getElementById('mKwitansi')).show();
                 }
 
-                function prosesBayar(id, nama, tahun, wa) {
+                function prosesBayar(id) {
+                    const s = DB_SANTRI.find(x => x.id == id);
                     const total = document.getElementById('total-' + id).innerText;
-                    if(total === "0") return alert("Pilih bulan pembayaran!");
-                    
-                    const card = document.getElementById('card-' + id);
-                    const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
+                    if(total === "0") return alert("Pilih bulan!");
+                    const checks = document.getElementById('card-'+id).querySelectorAll('.pay-check:checked:not(:disabled)');
                     const itemIds = Array.from(checks).map(c => c.getAttribute('data-id'));
-                    
-                    // Kumpulkan rincian bulan apa saja yang dibayar untuk ditampilkan di kwitansi
-                    let rincianHtml = '';
-                    checks.forEach(c => {
-                        let isPondok = c.id.startsWith('p-');
-                        let textBulan = c.nextElementSibling.innerText;
-                        rincianHtml += '<li>' + (isPondok ? 'Pondok' : 'Makan') + ' - ' + textBulan + '</li>';
-                    });
-
-                    if(confirm("Konfirmasi bayar Rp " + total + " untuk " + nama + "?")) {
-                        fetch('/admin/konfirmasi-bayar', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ santriId: id, tahun: tahun, itemIds: itemIds })
-                        }).then(res => res.json()).then(d => { 
-                            if(d.success) { 
-                                // Jika sukses, langsung panggil modal kwitansi tanpa me-reload web
-                                tampilkanKwitansi(nama, total, rincianHtml, wa);
-                            } 
-                        });
+                    let lp = [], lm = [];
+                    checks.forEach(c => { if(c.id.startsWith('p-')) lp.push(c.nextElementSibling.innerText); else lm.push(c.nextElementSibling.innerText); });
+                    if(confirm("Bayar Rp " + total + " untuk " + s.nama + "?")) {
+                        fetch('/admin/konfirmasi-bayar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ santriId: id, tahun: THN_AKTIF, itemIds: itemIds }) })
+                        .then(res => res.json()).then(d => { if(d.success) tampilkanKwitansi(s.nama, total, lp, lm, s.whatsapp); });
                     }
                 }
                 
-                function updateStatus(id, s) {
-                    fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) })
-                    .then(res => res.json()).then(d => { if(d.success) location.reload(); });
-                }
-                
-                function simpanC() {
-                    fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) })
-                    .then(res => res.json()).then(d => { if(d.success) { alert('Tersimpan!'); location.reload(); } });
-                }
-                
-                function lihatDetail(js) {
-                    const d = JSON.parse(js);
-                    var html = '<div class="d-flex align-items-center mb-4">';
-                    html += '<img src="/uploads/' + d.berkas.foto + '" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;">';
-                    html += '<div><h3 class="fw-bold text-success mb-0">' + d.nama + '</h3><p class="text-muted small">' + d.jenjang + '</p></div></div>';
-                    html += '<div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6>';
-                    html += '<p class="small"><b>NISN:</b> ' + (d.nisn || '-') + '<br>';
-                    html += '<b>NIK:</b> ' + (d.nik || '-') + '<br>';
-                    html += '<b>Tgl Daftar:</b> ' + (d.tanggal || d.tahunDaftar || '-') + '<br>';
-                    html += '<b>Alamat:</b> ' + d.alamat + '</p></div>';
-                    html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">';
-                    html += '<b>Ayah:</b> ' + d.namaAyah + ' (' + (d.pekerjaanAyah || '-') + ')<br>';
-                    html += '<b>Ibu:</b> ' + (d.namaIbu || '-') + ' (' + (d.pekerjaanIbu || '-') + ')<br>';
-                    html += '<b>WA:</b> ' + d.whatsapp + '</p></div></div>';
-                    
-                    document.getElementById('isiM').innerHTML = html;
-                    new bootstrap.Modal(document.getElementById('mD')).show();
-                }
+                function updateStatus(id, s) { fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
+                function simpanC() { fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
+                function lihatDetail(js) { const d = JSON.parse(js); document.getElementById('isiM').innerHTML = '<h3>'+d.nama+'</h3><p>NIK: '+d.nik+'</p><p>WA: '+d.whatsapp+'</p>'; new bootstrap.Modal(document.getElementById('mD')).show(); }
             </script>
         </body>
         </html>
