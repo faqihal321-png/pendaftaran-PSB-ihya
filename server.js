@@ -8,7 +8,7 @@ const ExcelJS = require('exceljs');
 
 const app = express();
 
-// --- KONFIGURASI PENYIMPANAN PERMANEN ---
+// --- KONFIGURASI PENYIMPANAN PERMANEN (RAILWAY VOLUME) ---
 const VOLUME_PATH = '/app/data_pondok';
 const isProduction = process.env.RAILWAY_ENVIRONMENT_ID ? true : false;
 const BASE_DIR = isProduction ? VOLUME_PATH : __dirname;
@@ -61,11 +61,13 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 'foto' }, { name: 'kk' }]), (req, res) => {
     try {
         const data = readData();
+        const config = readConfig();
         const getFileName = (n) => (req.files && req.files[n]) ? req.files[n][0].filename : null;
         const baru = {
             id: Date.now(),
             ...req.body,
             status: 'Aktif',
+            tahunDaftar: config.tahunAktif, // Simpan tahun daftar saat ini
             pembayaran: {},
             berkas: { ktp: getFileName('ktp'), ijazah: getFileName('ijazah'), foto: getFileName('foto'), kk: getFileName('kk') },
             tanggal: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })
@@ -155,7 +157,7 @@ app.get('/admin', (req, res) => {
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
     const santriMA = data.filter(p => p.jenjang === 'MA').length;
 
-    // --- TABEL DATA SANTRI ---
+    // --- DATA SANTRI ---
     const rowsSantri = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
         const fotoUrl = p.berkas.foto ? `/uploads/${p.berkas.foto}` : 'https://via.placeholder.com/40x50';
@@ -167,7 +169,7 @@ app.get('/admin', (req, res) => {
             <tr class="santri-row" data-name="${p.nama.toLowerCase()}">
                 <td class="text-center small">${index + 1}</td>
                 <td class="text-center"><img src="${fotoUrl}" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>
-                <td><b>${p.nama}</b><br><small class="text-muted" style="font-size:0.7rem;">${p.tanggal}</small></td>
+                <td><b>${p.nama}</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: ${p.tahunDaftar || '2025'}</small></td>
                 <td class="text-center small">${p.jenjang || '-'}</td>
                 <td><div class="d-flex flex-wrap gap-1">${btnBerkas(p.berkas.foto, 'FOTO', 'btn-primary')}${btnBerkas(p.berkas.ijazah, 'IJAZAH', 'btn-secondary')}${btnBerkas(p.berkas.kk, 'KK', 'btn-info text-white')}${btnBerkas(p.berkas.ktp, 'KTP', 'btn-warning')}</div></td>
                 <td><select class="form-select form-select-sm fw-bold" onchange="updateStatus(${p.id}, this.value)"><option value="Aktif" ${p.status === 'Aktif' ? 'selected' : ''}>🟢 Aktif</option><option value="Tidak Aktif" ${p.status === 'Tidak Aktif' ? 'selected' : ''}>🔴 Tidak Aktif</option></select></td>
@@ -176,14 +178,15 @@ app.get('/admin', (req, res) => {
         `;
     }).join('');
 
-    // --- CARDS PEMBAYARAN (DENGAN PESAN TIDAK AKTIF) ---
+    // --- CARDS PEMBAYARAN ---
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agt', 'Sept', 'Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
+        const tahunDaftar = p.tahunDaftar || "2025";
         
-        // Pengecekan Tunggakan
+        // Cek tunggakan tahun lalu HANYA JIKA tahun aktif > tahun daftar
         const bayarLalu = p.pembayaran[tahunLalu] || {};
         const lunasLalu = months.every(m => bayarLalu['p-'+m] && bayarLalu['m-'+m]);
-        const isLocked = !lunasLalu && tahunAktif !== "2025";
+        const isLocked = (parseInt(tahunAktif) > parseInt(tahunDaftar)) && !lunasLalu;
         const isTidakAktif = p.status === 'Tidak Aktif';
 
         const createCheck = (prefix) => months.map(m => {
@@ -199,9 +202,8 @@ app.get('/admin', (req, res) => {
             </div>`;
         }).join('');
 
-        // Konten utama kartu: Jika tidak aktif tampilkan pesan, jika aktif tampilkan checklist
         const cardBody = isTidakAktif 
-            ? `<div class="py-5 text-center"><h5 class="text-danger fw-bold"><i class="fas fa-exclamation-triangle me-2"></i> SANTRI TIDAK ADA TAGIHAN KARENA TIDAK AKTIF</h5></div>`
+            ? `<div class="py-5 text-center"><h5 class="text-danger fw-bold"><i class="fas fa-user-slash me-2"></i> SANTRI TIDAK ADA TAGIHAN KARENA TIDAK AKTIF</h5></div>`
             : `<div class="row g-3 ${isLocked ? 'pointer-events-none' : ''}">
                 <div class="col-md-6 border-end text-center">
                     <p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok (Rp ${config.biayaPondok})</p>
@@ -218,7 +220,7 @@ app.get('/admin', (req, res) => {
                 <div class="card border-0 shadow-sm rounded-4 ${isLocked || isTidakAktif ? 'opacity-75' : ''}">
                     <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
                         <h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> ${p.nama} (${tahunAktif})</h6>
-                        ${isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">'+p.jenjang+'</span>')}
+                        ${isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Tahun Daftar: '+tahunDaftar+'</span>')}
                     </div>
                     <div class="card-body p-3">
                         ${cardBody}
@@ -230,7 +232,7 @@ app.get('/admin', (req, res) => {
                         </div>
                         <button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" 
                             onclick="prosesBayar(${p.id}, '${p.nama}', '${tahunAktif}')" ${isLocked || isTidakAktif ? 'disabled' : ''}>
-                            <i class="fas fa-money-check-alt me-2"></i> KONFIRMASI BAYAR
+                            <i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR
                         </button>
                     </div>
                 </div>
@@ -252,7 +254,6 @@ app.get('/admin', (req, res) => {
                 .sidebar .nav-link.active { background: rgba(255,255,255,0.15) !important; color: white; }
                 .main-content { width: 100%; padding: 25px; }
                 .stat-card { border: none; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-                .search-box { border-radius: 50px; padding-left: 15px; }
                 .pointer-events-none { pointer-events: none; }
             </style>
         </head>
@@ -268,7 +269,6 @@ app.get('/admin', (req, res) => {
                         <hr class="mx-3"><a href="/logout" class="nav-link text-danger mt-4"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
                     </div>
                 </nav>
-
                 <div class="main-content">
                     <div class="tab-content">
                         <!-- DASHBOARD -->
@@ -287,20 +287,14 @@ app.get('/admin', (req, res) => {
                                 <div class="col-md-4"><div class="card border-0 p-3 rounded-4 shadow-sm bg-white text-primary"><h6>Tarif Makan:</h6><h5 class="fw-bold mb-0">Rp ${config.biayaMakan}</h5></div></div>
                             </div>
                         </div>
-
-                        <!-- DATA SANTRI -->
                         <div class="tab-pane fade" id="v-santri">
-                            <div class="d-flex justify-content-between mb-3 align-items-center"><h4 class="fw-bold text-success">DATA SANTRI</h4><input class="form-control w-25 search-box shadow-sm" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value)"></div>
+                            <div class="d-flex justify-content-between mb-3 align-items-center"><h4 class="fw-bold text-success text-uppercase">Data Santri</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value)"></div>
                             <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
                         </div>
-
-                        <!-- PEMBAYARAN -->
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">CEKLIS PEMBAYARAN ${tahunAktif}</h4><input class="form-control w-25 search-box shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)"></div>
-                            <div id="payment-container">${cardsBayar || '<div class="text-center p-5">Belum ada data.</div>'}</div>
+                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran ${tahunAktif}</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)"></div>
+                            <div id="payment-container">${cardsBayar || '<div class="text-center p-5">Belum ada data santri.</div>'}</div>
                         </div>
-
-                        <!-- SETTING -->
                         <div class="tab-pane fade" id="v-set">
                             <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4>
                             <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;">
@@ -313,16 +307,13 @@ app.get('/admin', (req, res) => {
                     </div>
                 </div>
             </div>
-
             <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
-
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
                 function filterT(c, q) {
                     const rows = document.getElementsByClassName(c);
                     for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(q.toLowerCase()) ? '' : 'none'; }
                 }
-
                 function hitungTotal(id) {
                     const card = document.getElementById('card-' + id);
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
@@ -333,15 +324,12 @@ app.get('/admin', (req, res) => {
                     });
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
-
                 function prosesBayar(id, nama, tahun) {
                     const total = document.getElementById('total-' + id).innerText;
                     if(total === "0") return alert("Pilih bulan pembayaran!");
-                    
                     const card = document.getElementById('card-' + id);
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
                     const itemIds = Array.from(checks).map(c => c.getAttribute('data-id'));
-
                     if(confirm("Konfirmasi bayar Rp " + total + " untuk " + nama + "?")) {
                         fetch('/admin/konfirmasi-bayar', {
                             method: 'POST',
@@ -350,18 +338,15 @@ app.get('/admin', (req, res) => {
                         }).then(res => res.json()).then(d => { if(d.success) { alert('Berhasil!'); location.reload(); } });
                     }
                 }
-
                 function updateStatus(id, s) {
                     fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) })
                     .then(res => res.json()).then(d => { if(d.success) location.reload(); });
                 }
-
                 function simpanC() {
                     fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) })
                     .then(res => res.json()).then(d => { if(d.success) { alert('Tersimpan!'); location.reload(); } });
                 }
-
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
                     document.getElementById('isiM').innerHTML = \`
