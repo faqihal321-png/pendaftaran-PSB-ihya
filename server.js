@@ -162,12 +162,7 @@ app.get('/admin', (req, res) => {
     const santriMA = data.filter(p => p.jenjang === 'SMA/MA').length;
 
     const rowsSantri = data.map((p, index) => {
-        // Pencegahan error jika nama mengandung tanda kutip
-        const detailJson = JSON.stringify(p).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        const safeNama = (p.nama || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        const safeNamaLower = (p.nama || '').toLowerCase().replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        const safeJSNama = (p.nama || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
-        
+        const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
         const fotoUrl = p.berkas.foto ? '/uploads/' + p.berkas.foto : 'https://via.placeholder.com/40x50';
         
         const btnB = (file, label, color) => {
@@ -181,17 +176,22 @@ app.get('/admin', (req, res) => {
             if (tglPart.length === 3) {
                 const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
                 labelDaftar = bulanIndo[parseInt(tglPart[1])-1] + ' ' + tglPart[2];
-            } else { labelDaftar = p.tanggal; }
+            } else {
+                labelDaftar = p.tanggal;
+            }
         }
 
-        return '<tr class="santri-row" data-name="'+safeNamaLower+'">' +
+        // Memastikan data-name sesuai dengan kode awal Anda
+        return '<tr class="santri-row" data-name="'+(p.nama || '').toLowerCase()+'">' +
             '<td class="text-center small">'+(index + 1)+'</td>' +
             '<td class="text-center"><img src="'+fotoUrl+'" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>' +
-            '<td><b>'+safeNama+'</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: '+labelDaftar+'</small></td>' +
+            '<td><b>'+p.nama+'</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: '+labelDaftar+'</small></td>' +
             '<td class="text-center small">'+(p.jenjang || '-')+'</td>' +
             '<td><div class="d-flex flex-wrap gap-1">' +
-                btnB(p.berkas.foto, 'FOTO', 'btn-primary') + btnB(p.berkas.ijazah, 'IJAZAH', 'btn-secondary') +
-                btnB(p.berkas.kk, 'KK', 'btn-info text-white') + btnB(p.berkas.ktp, 'KTP', 'btn-warning') +
+                btnB(p.berkas.foto, 'FOTO', 'btn-primary') +
+                btnB(p.berkas.ijazah, 'IJAZAH', 'btn-secondary') +
+                btnB(p.berkas.kk, 'KK', 'btn-info text-white') +
+                btnB(p.berkas.ktp, 'KTP', 'btn-warning') +
             '</div></td>' +
             '<td><select class="form-select form-select-sm fw-bold" onchange="updateStatus('+p.id+', this.value)">' +
                 '<option value="Aktif" '+(p.status === 'Aktif' ? 'selected' : '')+'>🟢 Aktif</option>' +
@@ -202,9 +202,6 @@ app.get('/admin', (req, res) => {
     }).join('');
 
     const cardsBayar = data.map((p) => {
-        const safeNama = (p.nama || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        const safeNamaLower = (p.nama || '').toLowerCase().replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        const safeJSNama = (p.nama || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
         const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
         
         let tahunDaftarAkurat = p.tahunDaftar;
@@ -247,16 +244,19 @@ app.get('/admin', (req, res) => {
         if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
         if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR TAHUN INI</h5></div>';
 
-        return '<div class="bayar-row mb-4" data-name="'+safeNamaLower+'" id="card-'+p.id+'" style="display: none;">' +
+        // Mencegah error karakter kutip pada parameter onclick
+        const safeNamaKwitansi = (p.nama || '').replace(/'/g, ' ').replace(/"/g, ' ');
+
+        return '<div class="bayar-row mb-4" data-name="'+(p.nama || '').toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
             '<div class="card border-0 shadow-sm rounded-4 '+(isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : '')+'">' +
                 '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
-                    '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+safeNama+' ('+tahunAktif+')</h6>' +
+                    '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+p.nama+' ('+tahunAktif+')</h6>' +
                     (isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+tahunDaftarAkurat+'</span>')) +
                 '</div>' +
                 '<div class="card-body p-3">'+bodyHTML+'</div>' +
                 '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
                     '<div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
-                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+safeJSNama+'\', \''+tahunAktif+'\', \''+(p.whatsapp || '')+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
+                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+safeNamaKwitansi+'\', \''+tahunAktif+'\', \''+(p.whatsapp || '')+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -269,6 +269,7 @@ app.get('/admin', (req, res) => {
             <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+            <!-- Library Cetak PDF -->
             <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
             <title>Panel Admin PSB</title>
             <style>
@@ -344,63 +345,37 @@ app.get('/admin', (req, res) => {
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
-                // FUNGSI PENCARIAN TERAMAN (Support semua browser)
-                function filterT(className, q, strict) {
-                    var rows = document.getElementsByClassName(className);
-                    var query = q ? q.toLowerCase().trim() : "";
-                    var hint = document.getElementById('hint-bayar');
-                    var adaHasil = false;
+                // MENGGUNAKAN KODE SEARCH ASLI MILIK ANDA YANG TERBUKTI BEKERJA
+                function filterT(c, q, strict) {
+                    const rows = document.getElementsByClassName(c);
+                    const query = q.toLowerCase().trim();
+                    const hint = document.getElementById('hint-bayar');
 
-                    // Menggunakan For Loop klasik yang pasti didukung semua browser
-                    for (var i = 0; i < rows.length; i++) {
-                        var r = rows[i];
-                        var dataName = r.getAttribute('data-name') || "";
-                        
-                        if (strict) {
-                            if (query === "") {
-                                r.style.display = 'none';
-                            } else {
-                                if (dataName.indexOf(query) !== -1) {
-                                    r.style.display = '';
-                                    adaHasil = true;
-                                } else {
-                                    r.style.display = 'none';
-                                }
-                            }
+                    if (strict) {
+                        if (query === "") {
+                            if(hint) hint.style.display = 'block';
+                            for (let r of rows) r.style.display = 'none';
                         } else {
-                            if (dataName.indexOf(query) !== -1) {
-                                r.style.display = '';
-                            } else {
-                                r.style.display = 'none';
+                            if(hint) hint.style.display = 'none';
+                            for (let r of rows) {
+                                r.style.display = (r.getAttribute('data-name') || '').includes(query) ? '' : 'none';
                             }
                         }
-                    }
-
-                    // Logika Text Hint
-                    if (strict && hint) {
-                        if (query === "") {
-                            hint.style.display = 'block';
-                            hint.innerHTML = '<h5><i class="fas fa-search me-2"></i> Silakan cari nama santri untuk mengelola pembayaran.</h5>';
-                        } else {
-                            if (adaHasil) {
-                                hint.style.display = 'none';
-                            } else {
-                                hint.style.display = 'block';
-                                hint.innerHTML = '<h5 class="text-danger mt-4"><i class="fas fa-exclamation-circle me-2"></i> Santri "' + q + '" tidak ditemukan!</h5>';
-                            }
+                    } else {
+                        for (let r of rows) {
+                            r.style.display = (r.getAttribute('data-name') || '').includes(query) ? '' : 'none';
                         }
                     }
                 }
                 
                 function hitungTotal(id) {
-                    var card = document.getElementById('card-' + id);
-                    var checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
-                    var total = 0;
-                    for (var i = 0; i < checks.length; i++) {
-                        var c = checks[i];
-                        var price = c.getAttribute('data-price').replace(/\\./g, '');
+                    const card = document.getElementById('card-' + id);
+                    const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
+                    let total = 0;
+                    checks.forEach(c => {
+                        let price = c.getAttribute('data-price').replace(/\\./g, '');
                         total += parseInt(price);
-                    }
+                    });
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
                 
@@ -458,33 +433,28 @@ app.get('/admin', (req, res) => {
                 }
 
                 function prosesBayar(id, nama, tahun, wa) {
-                    var total = document.getElementById('total-' + id).innerText;
+                    const total = document.getElementById('total-' + id).innerText;
                     if(total === "0") return alert("Pilih bulan pembayaran!");
                     
-                    var card = document.getElementById('card-' + id);
-                    var checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
-                    var itemIds = [];
-                    var listPondok = [];
-                    var listMakan = [];
+                    const card = document.getElementById('card-' + id);
+                    const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
+                    const itemIds = Array.from(checks).map(c => c.getAttribute('data-id'));
                     
-                    for (var i = 0; i < checks.length; i++) {
-                        var c = checks[i];
-                        itemIds.push(c.getAttribute('data-id'));
-                        var isPondok = c.id.startsWith('p-');
-                        var textBulan = c.nextElementSibling.innerText;
-                        if(isPondok) {
-                            listPondok.push(textBulan);
-                        } else {
-                            listMakan.push(textBulan);
-                        }
-                    }
+                    let listPondok = [];
+                    let listMakan = [];
+                    checks.forEach(c => {
+                        let isPondok = c.id.startsWith('p-');
+                        let textBulan = c.nextElementSibling.innerText;
+                        if(isPondok) listPondok.push(textBulan);
+                        else listMakan.push(textBulan);
+                    });
 
                     if(confirm("Konfirmasi bayar Rp " + total + " untuk " + nama + "?")) {
                         fetch('/admin/konfirmasi-bayar', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ santriId: id, tahun: tahun, itemIds: itemIds })
-                        }).then(function(res) { return res.json(); }).then(function(d) { 
+                        }).then(res => res.json()).then(d => { 
                             if(d.success) tampilkanKwitansi(nama, total, listPondok, listMakan, wa);
                         });
                     }
@@ -492,17 +462,17 @@ app.get('/admin', (req, res) => {
                 
                 function updateStatus(id, s) {
                     fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) })
-                    .then(function(res){ return res.json(); }).then(function(d){ if(d.success) location.reload(); });
+                    .then(res => res.json()).then(d => { if(d.success) location.reload(); });
                 }
                 
                 function simpanC() {
                     fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) })
-                    .then(function(res){ return res.json(); }).then(function(d){ if(d.success) { alert('Tersimpan!'); location.reload(); } });
+                    .then(res => res.json()).then(d => { if(d.success) { alert('Tersimpan!'); location.reload(); } });
                 }
                 
                 function lihatDetail(js) {
-                    var d = JSON.parse(js);
+                    const d = JSON.parse(js);
                     var html = '<div class="d-flex align-items-center mb-4">';
                     html += '<img src="/uploads/' + d.berkas.foto + '" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;">';
                     html += '<div><h3 class="fw-bold text-success mb-0">' + d.nama + '</h3><p class="text-muted small">' + d.jenjang + '</p></div></div>';
@@ -515,6 +485,7 @@ app.get('/admin', (req, res) => {
                     html += '<b>Ayah:</b> ' + d.namaAyah + ' (' + (d.pekerjaanAyah || '-') + ')<br>';
                     html += '<b>Ibu:</b> ' + (d.namaIbu || '-') + ' (' + (d.pekerjaanIbu || '-') + ')<br>';
                     html += '<b>WA:</b> ' + d.whatsapp + '</p></div></div>';
+                    
                     document.getElementById('isiM').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
