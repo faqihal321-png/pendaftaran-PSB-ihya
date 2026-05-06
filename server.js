@@ -155,14 +155,15 @@ app.get('/admin', (req, res) => {
         `;
     }).join('');
 
-    // List Pembayaran (Format Card Memanjang Kebawah)
+    // List Pembayaran (Dua Kolom: Pondok & Makan)
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agt', 'Sept', 'Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-        const checklist = months.map(m => `
-            <div class="col-6 col-md-3 col-lg-2 mb-2">
-                <div class="form-check p-2 border rounded shadow-sm bg-white">
-                    <input class="form-check-input ms-0 me-2" type="checkbox" id="check-${p.id}-${m}">
-                    <label class="form-check-label small fw-bold" for="check-${p.id}-${m}">${m}</label>
+        
+        const createChecklist = (prefix) => months.map(m => `
+            <div class="col-4 col-md-3 mb-2">
+                <div class="form-check p-1 border rounded bg-white shadow-sm" style="font-size: 0.65rem;">
+                    <input class="form-check-input ms-0 me-1" type="checkbox" id="${prefix}-${p.id}-${m}">
+                    <label class="form-check-label fw-bold" for="${prefix}-${p.id}-${m}">${m}</label>
                 </div>
             </div>
         `).join('');
@@ -170,12 +171,26 @@ app.get('/admin', (req, res) => {
         return `
             <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}">
                 <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-header bg-success text-white py-2 rounded-top-4">
+                    <div class="card-header bg-success text-white py-2 rounded-top-4 d-flex justify-content-between">
                         <h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-2"></i> ${p.nama}</h6>
+                        <span class="badge bg-white text-success fw-bold">${p.jenjang || '-'}</span>
                     </div>
                     <div class="card-body p-3">
-                        <div class="row gx-2 mt-1">
-                            ${checklist}
+                        <div class="row g-3">
+                            <!-- Kolom Kiri: Bulanan Pondok -->
+                            <div class="col-md-6 border-end">
+                                <p class="fw-bold text-success border-bottom pb-1 mb-2 small text-center"><i class="fas fa-mosque me-1"></i> BULANAN PONDOK</p>
+                                <div class="row gx-1">
+                                    ${createChecklist('pondok')}
+                                </div>
+                            </div>
+                            <!-- Kolom Kanan: Bulanan Makan -->
+                            <div class="col-md-6">
+                                <p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-center"><i class="fas fa-utensils me-1"></i> BULANAN MAKAN</p>
+                                <div class="row gx-1">
+                                    ${createChecklist('makan')}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -209,7 +224,7 @@ app.get('/admin', (req, res) => {
                     <div class="nav flex-column nav-pills">
                         <button class="nav-link active mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-th-large me-2"></i> Dashboard</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-santri"><i class="fas fa-users me-2"></i> Data Santri</button>
-                        <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-bayar"><i class="fas fa-check-square me-2"></i> Pembayaran</button>
+                        <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-bayar"><i class="fas fa-check-double me-2"></i> Pembayaran</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-set"><i class="fas fa-cog me-2"></i> Setting</button>
                         <a href="/logout" class="nav-link text-danger mt-4"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
                     </div>
@@ -245,10 +260,10 @@ app.get('/admin', (req, res) => {
                             </div>
                         </div>
 
-                        <!-- PEMBAYARAN (MANJANG KEBAWAH + CEKLIS) -->
+                        <!-- PEMBAYARAN (2 KOLOM: PONDOK & MAKAN) -->
                         <div class="tab-pane fade" id="v-bayar">
                             <div class="d-flex justify-content-between mb-4 align-items-center">
-                                <h4 class="fw-bold text-success">Ceklis Pembayaran 12 Bulan</h4>
+                                <h4 class="fw-bold text-success">Ceklis Pembayaran</h4>
                                 <input class="form-control w-25 search-box shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)">
                             </div>
                             <div id="payment-container">
