@@ -63,14 +63,31 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
         const data = readData();
         const config = readConfig();
         const getFileName = (n) => (req.files && req.files[n]) ? req.files[n][0].filename : null;
+        
+        // Membuat format Hari, Tanggal, Bulan, Tahun, Jam
+        const opsiWaktu = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        };
+        const waktuSkrg = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", ...opsiWaktu });
+
         const baru = {
             id: Date.now(),
             ...req.body,
             status: 'Aktif',
             tahunDaftar: config.tahunAktif,
             pembayaran: {},
-            berkas: { ktp: getFileName('ktp'), ijazah: getFileName('ijazah'), foto: getFileName('foto'), kk: getFileName('kk') },
-            tanggal: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })
+            berkas: { 
+                ktp: getFileName('ktp'), 
+                ijazah: getFileName('ijazah'), 
+                foto: getFileName('foto'), 
+                kk: getFileName('kk') 
+            },
+            tanggal: waktuSkrg // Format: "Senin, 7 Mei 2026 00.00"
         };
         data.push(baru);
         saveData(data);
@@ -172,7 +189,6 @@ app.get('/admin', (req, res) => {
             const tglPart = p.tanggal.split(',')[0].split('/');
             if (tglPart.length === 3) {
                 const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-                // Menjadi format: Mei 2026
                 labelDaftar = bulanIndo[parseInt(tglPart[1])-1] + ' ' + tglPart[2];
             } else {
                 labelDaftar = p.tanggal;
@@ -201,7 +217,6 @@ app.get('/admin', (req, res) => {
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
         
-        // --- Perbaikan Ceklis Tunggakan (Otomatis Ekstrak Tahun dari Tanggal) ---
         let tahunDaftarAkurat = p.tahunDaftar;
         if (p.tanggal) {
             const matchY = p.tanggal.match(/\d{4}/);
@@ -212,7 +227,6 @@ app.get('/admin', (req, res) => {
         const tahunAktifInt = parseInt(tahunAktif);
         const lunasLalu = months.every(m => (p.pembayaran[tahunLalu] || {})['p-'+m] && (p.pembayaran[tahunLalu] || {})['m-'+m]);
         
-        // Hanya dikunci jika tahun pendaftaran memang LEBIH KECIL dari tahun aktif dan belum lunas
         const isLocked = (tahunAktifInt > tahunDaftarInt) && !lunasLalu;
         const belumDaftar = tahunAktifInt < tahunDaftarInt;
         const isTidakAktif = p.status === 'Tidak Aktif';
@@ -243,6 +257,7 @@ app.get('/admin', (req, res) => {
         if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
         if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR TAHUN INI</h5></div>';
 
+        // --- TAMBAH DATA WA KE DALAM ONCLICK BUTTON ---
         return '<div class="bayar-row mb-4" data-name="'+p.nama.toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
             '<div class="card border-0 shadow-sm rounded-4 '+(isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : '')+'">' +
                 '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
@@ -252,7 +267,7 @@ app.get('/admin', (req, res) => {
                 '<div class="card-body p-3">'+bodyHTML+'</div>' +
                 '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
                     '<div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
-                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+p.nama+'\', \''+tahunAktif+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
+                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+p.nama+'\', \''+tahunAktif+'\', \''+(p.whatsapp || '')+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -324,7 +339,19 @@ app.get('/admin', (req, res) => {
                     </div>
                 </div>
             </div>
+            
+            <!-- Modal Detail Santri -->
             <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
+            
+            <!-- Modal Kwitansi -->
+            <div class="modal fade" id="mKwitansi" data-bs-backdrop="static" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 rounded-4 overflow-hidden shadow-lg">
+                        <div class="modal-body p-4" id="isiKwitansi"></div>
+                    </div>
+                </div>
+            </div>
+
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
                 function filterT(c, q, strict) {
@@ -348,6 +375,7 @@ app.get('/admin', (req, res) => {
                         }
                     }
                 }
+                
                 function hitungTotal(id) {
                     const card = document.getElementById('card-' + id);
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
@@ -358,32 +386,82 @@ app.get('/admin', (req, res) => {
                     });
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
-                function prosesBayar(id, nama, tahun) {
+                
+                function tampilkanKwitansi(nama, total, rincianList, wa) {
+                    // Membersihkan nomor WA, ubah 08 menjadi 628
+                    let cleanWa = wa.replace(/^0/, '62');
+                    
+                    // Format pesan WA menggunakan URL Encoding %0A untuk enter/baris baru
+                    let msg = 'Assalamu%27alaikum.%0A%0APemberitahuan%20dari%20Admin%20PSB%3A%0APembayaran%20santri%20a.n%20*';
+                    msg += encodeURIComponent(nama) + '*%20sebesar%20*Rp%20' + total + '*%20telah%20berhasil%20kami%20terima.%0A%0ATerima%20kasih.';
+                    
+                    let waLink = 'https://wa.me/' + cleanWa + '?text=' + msg;
+                    let tglSkrg = new Date().toLocaleString('id-ID');
+
+                    var html = '<div class="text-center mb-4">';
+                    html += '<h3 class="fw-bold text-success mb-1">KWITANSI LUNAS</h3>';
+                    html += '<p class="text-muted small">Pesantren PSB Ihya</p></div>';
+                    
+                    html += '<table class="table table-sm table-bordered border-success align-middle">';
+                    html += '<tr><td width="35%" class="text-muted small fw-bold bg-light">Nama Santri</td><td><strong class="text-success">' + nama + '</strong></td></tr>';
+                    html += '<tr><td class="text-muted small fw-bold bg-light">Nominal</td><td><h5 class="fw-bold mb-0">Rp ' + total + '</h5></td></tr>';
+                    html += '<tr><td class="text-muted small fw-bold bg-light">Rincian Bayar</td><td><ul class="mb-0 small" style="padding-left:15px;">' + rincianList + '</ul></td></tr>';
+                    html += '<tr><td class="text-muted small fw-bold bg-light">Tanggal</td><td class="small">' + tglSkrg + '</td></tr>';
+                    html += '</table>';
+                    
+                    html += '<div class="d-flex flex-column gap-2 mt-4">';
+                    html += '<a href="' + waLink + '" target="_blank" class="btn btn-success fw-bold p-2"><i class="fab fa-whatsapp me-2"></i>Kirim WA ke Orang Tua</a>';
+                    html += '<button class="btn btn-light border fw-bold p-2 text-secondary" onclick="location.reload()">Tutup Halaman</button>';
+                    html += '</div>';
+
+                    document.getElementById('isiKwitansi').innerHTML = html;
+                    var kwitansiModal = new bootstrap.Modal(document.getElementById('mKwitansi'));
+                    kwitansiModal.show();
+                }
+
+                function prosesBayar(id, nama, tahun, wa) {
                     const total = document.getElementById('total-' + id).innerText;
                     if(total === "0") return alert("Pilih bulan pembayaran!");
+                    
                     const card = document.getElementById('card-' + id);
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
                     const itemIds = Array.from(checks).map(c => c.getAttribute('data-id'));
+                    
+                    // Kumpulkan rincian bulan apa saja yang dibayar untuk ditampilkan di kwitansi
+                    let rincianHtml = '';
+                    checks.forEach(c => {
+                        let isPondok = c.id.startsWith('p-');
+                        let textBulan = c.nextElementSibling.innerText;
+                        rincianHtml += '<li>' + (isPondok ? 'Pondok' : 'Makan') + ' - ' + textBulan + '</li>';
+                    });
+
                     if(confirm("Konfirmasi bayar Rp " + total + " untuk " + nama + "?")) {
                         fetch('/admin/konfirmasi-bayar', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ santriId: id, tahun: tahun, itemIds: itemIds })
-                        }).then(res => res.json()).then(d => { if(d.success) { alert('Berhasil!'); location.reload(); } });
+                        }).then(res => res.json()).then(d => { 
+                            if(d.success) { 
+                                // Jika sukses, langsung panggil modal kwitansi tanpa me-reload web
+                                tampilkanKwitansi(nama, total, rincianHtml, wa);
+                            } 
+                        });
                     }
                 }
+                
                 function updateStatus(id, s) {
                     fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) })
                     .then(res => res.json()).then(d => { if(d.success) location.reload(); });
                 }
+                
                 function simpanC() {
                     fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) })
                     .then(res => res.json()).then(d => { if(d.success) { alert('Tersimpan!'); location.reload(); } });
                 }
+                
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
-                    // Gunakan penggabungan string '+' agar code editor Anda tidak mendeteksi error syntax
                     var html = '<div class="d-flex align-items-center mb-4">';
                     html += '<img src="/uploads/' + d.berkas.foto + '" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;">';
                     html += '<div><h3 class="fw-bold text-success mb-0">' + d.nama + '</h3><p class="text-muted small">' + d.jenjang + '</p></div></div>';
