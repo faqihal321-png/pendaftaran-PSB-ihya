@@ -126,7 +126,7 @@ app.get('/admin', (req, res) => {
     if (!req.session.isLoggedIn) return res.redirect('/login');
     const data = readData();
     
-    // Perhitungan Statistik
+    // Statistik
     const totalSantri = data.length;
     const santriAktif = data.filter(p => p.status === 'Aktif').length;
     const santriTidakAktif = data.filter(p => p.status === 'Tidak Aktif').length;
@@ -155,11 +155,32 @@ app.get('/admin', (req, res) => {
         `;
     }).join('');
 
-    // Rows untuk Tabel Pembayaran
-    const rowsBayar = data.map((p) => {
+    // List Pembayaran (Format Card Memanjang Kebawah)
+    const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agt', 'Sept', 'Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-        const cells = months.map(m => `<td style="min-width:110px;"><div class="input-group input-group-sm"><span class="input-group-text">Rp</span><input class="form-control" placeholder="0"></div></td>`).join('');
-        return `<tr class="bayar-row" data-name="${p.nama.toLowerCase()}"><td class="sticky-col"><b>${p.nama}</b></td>${cells}</tr>`;
+        const checklist = months.map(m => `
+            <div class="col-6 col-md-3 col-lg-2 mb-2">
+                <div class="form-check p-2 border rounded shadow-sm bg-white">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" id="check-${p.id}-${m}">
+                    <label class="form-check-label small fw-bold" for="check-${p.id}-${m}">${m}</label>
+                </div>
+            </div>
+        `).join('');
+
+        return `
+            <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-header bg-success text-white py-2 rounded-top-4">
+                        <h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-2"></i> ${p.nama}</h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="row gx-2 mt-1">
+                            ${checklist}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     }).join('');
 
     res.send(`
@@ -178,7 +199,6 @@ app.get('/admin', (req, res) => {
                 .sidebar .nav-link.active { background: rgba(255,255,255,0.15) !important; color: white; }
                 .main-content { width: 100%; padding: 30px; }
                 .stat-card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: white; }
-                .sticky-col { position: sticky; left: 0; background: white !important; z-index: 2; border-right: 2px solid #eee; }
                 .search-box { border-radius: 50px; padding-left: 15px; }
             </style>
         </head>
@@ -189,7 +209,7 @@ app.get('/admin', (req, res) => {
                     <div class="nav flex-column nav-pills">
                         <button class="nav-link active mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-th-large me-2"></i> Dashboard</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-santri"><i class="fas fa-users me-2"></i> Data Santri</button>
-                        <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-bayar"><i class="fas fa-wallet me-2"></i> Pembayaran</button>
+                        <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-bayar"><i class="fas fa-check-square me-2"></i> Pembayaran</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-set"><i class="fas fa-cog me-2"></i> Setting</button>
                         <a href="/logout" class="nav-link text-danger mt-4"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
                     </div>
@@ -225,21 +245,14 @@ app.get('/admin', (req, res) => {
                             </div>
                         </div>
 
-                        <!-- PEMBAYARAN -->
+                        <!-- PEMBAYARAN (MANJANG KEBAWAH + CEKLIS) -->
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-3 align-items-center">
-                                <h4 class="fw-bold text-success">Input Pembayaran</h4>
-                                <input class="form-control w-25 search-box" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)">
+                            <div class="d-flex justify-content-between mb-4 align-items-center">
+                                <h4 class="fw-bold text-success">Ceklis Pembayaran 12 Bulan</h4>
+                                <input class="form-control w-25 search-box shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)">
                             </div>
-                            <div class="card border-0 shadow-sm overflow-hidden rounded-4">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered mb-0">
-                                        <thead class="table-success text-center">
-                                            <tr><th class="sticky-col">Nama</th><th>Juli</th><th>Agt</th><th>Sept</th><th>Okt</th><th>Nov</th><th>Des</th><th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>Mei</th><th>Jun</th></tr>
-                                        </thead>
-                                        <tbody>${rowsBayar || '<tr><td colspan="13" class="text-center py-4">Kosong</td></tr>'}</tbody>
-                                    </table>
-                                </div>
+                            <div id="payment-container">
+                                ${cardsBayar || '<div class="text-center p-5">Belum ada data santri.</div>'}
                             </div>
                         </div>
 
