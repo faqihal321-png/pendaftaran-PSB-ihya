@@ -63,31 +63,14 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
         const data = readData();
         const config = readConfig();
         const getFileName = (n) => (req.files && req.files[n]) ? req.files[n][0].filename : null;
-        
-        // Membuat format Hari, Tanggal, Bulan, Tahun, Jam
-        const opsiWaktu = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric', 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        };
-        const waktuSkrg = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", ...opsiWaktu });
-
         const baru = {
             id: Date.now(),
             ...req.body,
             status: 'Aktif',
             tahunDaftar: config.tahunAktif,
             pembayaran: {},
-            berkas: { 
-                ktp: getFileName('ktp'), 
-                ijazah: getFileName('ijazah'), 
-                foto: getFileName('foto'), 
-                kk: getFileName('kk') 
-            },
-            tanggal: waktuSkrg // Format: "Senin, 7 Mei 2026 00.00"
+            berkas: { ktp: getFileName('ktp'), ijazah: getFileName('ijazah'), foto: getFileName('foto'), kk: getFileName('kk') },
+            tanggal: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })
         };
         data.push(baru);
         saveData(data);
@@ -183,10 +166,23 @@ app.get('/admin', (req, res) => {
             return '<a href="/uploads/'+file+'" target="_blank" class="btn btn-xs '+color+' fw-bold" style="font-size:0.65rem; padding:2px 5px;">'+label+'</a>';
         };
 
+        // --- Logika Bulan Lengkap ---
+        let labelDaftar = p.tahunDaftar || '2025';
+        if (p.tanggal) {
+            const tglPart = p.tanggal.split(',')[0].split('/');
+            if (tglPart.length === 3) {
+                const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                // Menjadi format: Mei 2026
+                labelDaftar = bulanIndo[parseInt(tglPart[1])-1] + ' ' + tglPart[2];
+            } else {
+                labelDaftar = p.tanggal;
+            }
+        }
+
         return '<tr class="santri-row" data-name="'+p.nama.toLowerCase()+'">' +
             '<td class="text-center small">'+(index + 1)+'</td>' +
             '<td class="text-center"><img src="'+fotoUrl+'" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>' +
-            '<td><b>'+p.nama+'</b><br><small class="text-muted" style="font-size:0.7rem;">'+(p.tanggal || p.tahunDaftar)+'</small></td>' +
+            '<td><b>'+p.nama+'</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: '+labelDaftar+'</small></td>' +
             '<td class="text-center small">'+(p.jenjang || '-')+'</td>' +
             '<td><div class="d-flex flex-wrap gap-1">' +
                 btnB(p.berkas.foto, 'FOTO', 'btn-primary') +
@@ -204,9 +200,19 @@ app.get('/admin', (req, res) => {
 
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
-        const tahunDaftarInt = parseInt(p.tahunDaftar || "2025");
+        
+        // --- Perbaikan Ceklis Tunggakan (Otomatis Ekstrak Tahun dari Tanggal) ---
+        let tahunDaftarAkurat = p.tahunDaftar;
+        if (p.tanggal) {
+            const matchY = p.tanggal.match(/\d{4}/);
+            if (matchY) tahunDaftarAkurat = matchY[0];
+        }
+
+        const tahunDaftarInt = parseInt(tahunDaftarAkurat || "2025");
         const tahunAktifInt = parseInt(tahunAktif);
         const lunasLalu = months.every(m => (p.pembayaran[tahunLalu] || {})['p-'+m] && (p.pembayaran[tahunLalu] || {})['m-'+m]);
+        
+        // Hanya dikunci jika tahun pendaftaran memang LEBIH KECIL dari tahun aktif dan belum lunas
         const isLocked = (tahunAktifInt > tahunDaftarInt) && !lunasLalu;
         const belumDaftar = tahunAktifInt < tahunDaftarInt;
         const isTidakAktif = p.status === 'Tidak Aktif';
@@ -235,13 +241,13 @@ app.get('/admin', (req, res) => {
         '</div>';
 
         if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
-        if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR</h5></div>';
+        if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR TAHUN INI</h5></div>';
 
         return '<div class="bayar-row mb-4" data-name="'+p.nama.toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
             '<div class="card border-0 shadow-sm rounded-4 '+(isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : '')+'">' +
                 '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
                     '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+p.nama+' ('+tahunAktif+')</h6>' +
-                    (isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+(p.tahunDaftar || '2025')+'</span>')) +
+                    (isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+tahunDaftarAkurat+'</span>')) +
                 '</div>' +
                 '<div class="card-body p-3">'+bodyHTML+'</div>' +
                 '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
@@ -325,16 +331,21 @@ app.get('/admin', (req, res) => {
                     const rows = document.getElementsByClassName(c);
                     const query = q.toLowerCase().trim();
                     const hint = document.getElementById('hint-bayar');
+
                     if (strict) {
                         if (query === "") {
                             if(hint) hint.style.display = 'block';
                             for (let r of rows) r.style.display = 'none';
                         } else {
                             if(hint) hint.style.display = 'none';
-                            for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none'; }
+                            for (let r of rows) {
+                                r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
+                            }
                         }
                     } else {
-                        for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none'; }
+                        for (let r of rows) {
+                            r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
+                        }
                     }
                 }
                 function hitungTotal(id) {
@@ -372,18 +383,20 @@ app.get('/admin', (req, res) => {
                 }
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
+                    // Gunakan penggabungan string '+' agar code editor Anda tidak mendeteksi error syntax
                     var html = '<div class="d-flex align-items-center mb-4">';
                     html += '<img src="/uploads/' + d.berkas.foto + '" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;">';
                     html += '<div><h3 class="fw-bold text-success mb-0">' + d.nama + '</h3><p class="text-muted small">' + d.jenjang + '</p></div></div>';
                     html += '<div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6>';
                     html += '<p class="small"><b>NISN:</b> ' + (d.nisn || '-') + '<br>';
                     html += '<b>NIK:</b> ' + (d.nik || '-') + '<br>';
-                    html += '<b>Tgl Daftar:</b> ' + (d.tanggal || '-') + '<br>';
+                    html += '<b>Tgl Daftar:</b> ' + (d.tanggal || d.tahunDaftar || '-') + '<br>';
                     html += '<b>Alamat:</b> ' + d.alamat + '</p></div>';
                     html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">';
                     html += '<b>Ayah:</b> ' + d.namaAyah + ' (' + (d.pekerjaanAyah || '-') + ')<br>';
                     html += '<b>Ibu:</b> ' + (d.namaIbu || '-') + ' (' + (d.pekerjaanIbu || '-') + ')<br>';
                     html += '<b>WA:</b> ' + d.whatsapp + '</p></div></div>';
+                    
                     document.getElementById('isiM').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
