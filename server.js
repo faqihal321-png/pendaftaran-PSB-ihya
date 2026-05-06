@@ -161,7 +161,6 @@ app.get('/admin', (req, res) => {
     const santriMA = data.filter(p => p.jenjang === 'SMA/MA').length;
 
     const rowsSantri = data.map((p, index) => {
-        const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
         const fotoUrl = p.berkas.foto ? '/uploads/' + p.berkas.foto : 'https://via.placeholder.com/40x50';
         const btnB = (file, label, color) => {
             if(!file) return '<button class="btn btn-xs btn-light disabled" style="font-size:0.65rem; padding:2px 5px;">'+label+'</button>';
@@ -183,13 +182,12 @@ app.get('/admin', (req, res) => {
                 '<option value="Aktif" '+(p.status === 'Aktif' ? 'selected' : '')+'>🟢 Aktif</option>' +
                 '<option value="Tidak Aktif" '+(p.status === 'Tidak Aktif' ? 'selected' : '')+'>🔴 Tidak Aktif</option>' +
             '</select></td>' +
-            '<td><button class="btn btn-sm btn-success w-100 fw-bold shadow-sm" onclick="lihatDetail(\''+detailJson+'\')">DETAIL</button></td>' +
+            '<td><button class="btn btn-sm btn-success w-100 fw-bold shadow-sm" onclick="lihatDetail('+p.id+')">DETAIL</button></td>' +
         '</tr>';
     }).join('');
 
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
-        const lunasLalu = months.every(m => (p.pembayaran[tahunLalu] || {})['p-'+m] && (p.pembayaran[tahunLalu] || {})['m-'+m]);
         const isTidakAktif = p.status === 'Tidak Aktif';
 
         const createCheck = (prefix) => months.map(m => {
@@ -281,6 +279,7 @@ app.get('/admin', (req, res) => {
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
+                // DATA GLOBAL AMAN DARI ERROR KUTIP
                 const DB_SANTRI = ${JSON.stringify(data)};
                 const THN_AKTIF = "${tahunAktif}";
 
@@ -311,22 +310,39 @@ app.get('/admin', (req, res) => {
 
                 function downloadPDF(nama) {
                     const el = document.getElementById('area-cetak-kwitansi');
-                    const opt = { margin: 0.5, filename: 'Kwitansi_' + nama.replace(/ /g, '_') + '.pdf', jsPDF: { unit: 'in', format: 'a5', orientation: 'landscape' } };
+                    const opt = { 
+                        margin: 0.5, 
+                        filename: 'Kwitansi_' + nama.replace(/ /g, '_') + '.pdf', 
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2 },
+                        jsPDF: { unit: 'in', format: 'a5', orientation: 'landscape' } 
+                    };
                     html2pdf().set(opt).from(el).save();
                 }
 
                 function tampilkanKwitansi(nama, total, listPondok, listMakan, wa) {
                     let cleanWa = wa ? wa.replace(/^0/, '62') : '';
-                    let msg = 'Assalamu%27alaikum.%20Pembayaran%20' + encodeURIComponent(nama) + '%20Rp%20' + total + '%20berhasil.';
+                    let rincian = 'Pondok: ' + (listPondok.join(', ') || '-') + ' | Makan: ' + (listMakan.join(', ') || '-');
+                    let msg = 'Assalamu%27alaikum.%0APembayaran%20santri%20a.n%20*' + encodeURIComponent(nama) + '*%20sebesar%20*Rp%20' + total + '*%20berhasil%20kami%20terima.%0A%0A*Rincian:*%0A' + encodeURIComponent(rincian);
                     let waLink = 'https://wa.me/' + cleanWa + '?text=' + msg;
-                    let html = '<div id="area-cetak-kwitansi" style="padding: 30px; background: white; color: black;">';
-                    html += '<h2 class="text-center fw-bold">KWITANSI LUNAS</h2><p class="text-center">PSB Ihya</p><hr>';
-                    html += '<p>Diterima dari: <b>'+nama+'</b></p><h3>Total: Rp '+total+'</h3>';
-                    html += '<p>Rincian: Pondok ('+listPondok.join(', ')+'), Makan ('+listMakan.join(', ')+')</p></div>';
-                    html += '<div class="p-4 bg-light d-flex flex-column gap-2">';
-                    html += '<button onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\')" class="btn btn-danger fw-bold"><i class="fas fa-file-pdf me-2"></i>DOWNLOAD PDF</button>';
-                    html += '<a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold text-center"><i class="fab fa-whatsapp me-2"></i>KIRIM WA</a>';
-                    html += '<button class="btn btn-secondary fw-bold" onclick="location.reload()">TUTUP</button></div>';
+                    let tglSkrg = new Date().toLocaleString('id-ID');
+
+                    let html = '<div id="area-cetak-kwitansi" style="padding: 40px; background: white; color: black; font-family: sans-serif;">';
+                    html += '<div style="text-align: center; border-bottom: 2px solid #1e4d2b; padding-bottom: 10px; margin-bottom: 20px;">';
+                    html += '<h2 style="margin:0; color:#1e4d2b;">KWITANSI PEMBAYARAN</h2><p style="margin:0;">Pondok Pesantren PSB Ihya</p></div>';
+                    html += '<table style="width:100%; line-height:2;">';
+                    html += '<tr><td width="30%">Nama Santri</td><td>: <b>'+nama+'</b></td></tr>';
+                    html += '<tr><td>Jumlah Bayar</td><td>: <b style="font-size:1.2rem; color:#1e4d2b;">Rp '+total+'</b></td></tr>';
+                    html += '<tr><td>Rincian Pondok</td><td>: '+(listPondok.join(', ') || '-')+'</td></tr>';
+                    html += '<tr><td>Rincian Makan</td><td>: '+(listMakan.join(', ') || '-')+'</td></tr>';
+                    html += '<tr><td>Tanggal</td><td>: '+tglSkrg+'</td></tr></table>';
+                    html += '<div style="margin-top:30px; text-align:right;"><p>Admin PSB Ihya,</p><br><br><p>( ............................ )</p></div></div>';
+                    
+                    html += '<div class="p-4 bg-light d-flex flex-column gap-2 border-top">';
+                    html += '<button onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\')" class="btn btn-danger fw-bold py-2"><i class="fas fa-file-pdf me-2"></i>DOWNLOAD PDF KWITANSI</button>';
+                    html += '<a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold py-2 text-center"><i class="fab fa-whatsapp me-2"></i>KIRIM RINCIAN KE WA</a>';
+                    html += '<button class="btn btn-secondary fw-bold py-2" onclick="location.reload()">TUTUP</button></div>';
+                    
                     document.getElementById('isiKwitansi').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mKwitansi')).show();
                 }
@@ -347,7 +363,22 @@ app.get('/admin', (req, res) => {
                 
                 function updateStatus(id, s) { fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
                 function simpanC() { fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
-                function lihatDetail(js) { const d = JSON.parse(js); document.getElementById('isiM').innerHTML = '<h3>'+d.nama+'</h3><p>NIK: '+d.nik+'</p><p>WA: '+d.whatsapp+'</p>'; new bootstrap.Modal(document.getElementById('mD')).show(); }
+                
+                // DETAIL DATA KEMBALI LENGKAP
+                function lihatDetail(id) { 
+                    const d = DB_SANTRI.find(x => x.id == id);
+                    let html = '<div class="d-flex align-items-center mb-4">';
+                    html += '<img src="/uploads/' + (d.berkas.foto || '') + '" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;">';
+                    html += '<div><h3 class="fw-bold text-success mb-0">' + d.nama + '</h3><p class="text-muted small">' + d.jenjang + '</p></div></div>';
+                    html += '<div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6>';
+                    html += '<p class="small"><b>NISN:</b> ' + (d.nisn || '-') + '<br><b>NIK:</b> ' + (d.nik || '-') + '<br>';
+                    html += '<b>Tgl Daftar:</b> ' + (d.tanggal || d.tahunDaftar || '-') + '<br><b>Alamat:</b> ' + (d.alamat || '-') + '</p></div>';
+                    html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">';
+                    html += '<b>Ayah:</b> ' + (d.namaAyah || '-') + ' (' + (d.pekerjaanAyah || '-') + ')<br>';
+                    html += '<b>Ibu:</b> ' + (d.namaIbu || '-') + ' (' + (d.pekerjaanIbu || '-') + ')<br><b>WA:</b> ' + (d.whatsapp || '-') + '</p></div></div>';
+                    document.getElementById('isiM').innerHTML = html; 
+                    new bootstrap.Modal(document.getElementById('mD')).show(); 
+                }
             </script>
         </body>
         </html>
