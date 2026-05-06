@@ -154,8 +154,10 @@ app.get('/admin', (req, res) => {
     
     const santriAktif = data.filter(p => p.status === 'Aktif').length;
     const santriTidakAktif = data.filter(p => p.status === 'Tidak Aktif').length;
+    
+    // --- PERBAIKAN SINKRONISASI DASHBOARD ---
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
-    const santriMA = data.filter(p => p.jenjang === 'MA').length;
+    const santriMA = data.filter(p => p.jenjang === 'SMA/MA').length;
 
     const rowsSantri = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
@@ -177,7 +179,6 @@ app.get('/admin', (req, res) => {
     }).join('');
 
     const cardsBayar = data.map((p) => {
-        // Nama bulan lengkap
         const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
         const tahunDaftarInt = parseInt(p.tahunDaftar || "2025");
         const tahunAktifInt = parseInt(tahunAktif);
@@ -188,7 +189,6 @@ app.get('/admin', (req, res) => {
         const belumDaftar = tahunAktifInt < tahunDaftarInt;
         const isTidakAktif = p.status === 'Tidak Aktif';
 
-        // Layout 2 Kolom (col-6)
         const createCheck = (prefix) => months.map(m => {
             const lunas = p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif][prefix + '-' + m];
             return `
@@ -214,10 +214,9 @@ app.get('/admin', (req, res) => {
                 </div>
             </div>`;
 
-        if (isTidakAktif) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK ADA TAGIHAN KARENA TIDAK AKTIF</h5></div>`;
-        if (belumDaftar) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-muted fw-bold">SANTRI BELUM MENDAFTAR PADA TAHUN INI</h5></div>`;
+        if (isTidakAktif) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>`;
+        if (belumDaftar) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR</h5></div>`;
 
-        // Default display: none (hanya muncul saat dicari)
         return `
             <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}" id="card-${p.id}" style="display: none;">
                 <div class="card border-0 shadow-sm rounded-4 ${isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : ''}">
@@ -250,7 +249,7 @@ app.get('/admin', (req, res) => {
                 .main-content { width: 100%; padding: 25px; }
                 .stat-card { border: none; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
                 .pointer-events-none { pointer-events: none; }
-                #hint-bayar { padding: 60px 20px; color: #888; text-align: center; }
+                #hint-bayar { padding: 80px 20px; color: #888; text-align: center; }
             </style>
         </head>
         <body>
@@ -282,14 +281,14 @@ app.get('/admin', (req, res) => {
                             <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
                         </div>
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran ${tahunAktif}</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
+                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Pembayaran ${tahunAktif}</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
                             <div id="payment-container">
                                 <div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri untuk mengelola pembayaran.</h5></div>
-                                ${cardsBayar || '<div class="text-center p-5">Belum ada data santri.</div>'}
+                                ${cardsBayar}
                             </div>
                         </div>
                         <div class="tab-pane fade" id="v-set">
-                            <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4>
+                            <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan</h4>
                             <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;">
                                 <div class="mb-3"><label class="form-label fw-bold small">Tahun Ajaran Aktif</label><input type="text" id="cfgT" class="form-control" value="${tahunAktif}"></div>
                                 <div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
@@ -307,21 +306,16 @@ app.get('/admin', (req, res) => {
                     const rows = document.getElementsByClassName(c);
                     const query = q.toLowerCase().trim();
                     const hint = document.getElementById('hint-bayar');
-
                     if (strict) {
                         if (query === "") {
                             if(hint) hint.style.display = 'block';
                             for (let r of rows) r.style.display = 'none';
                         } else {
                             if(hint) hint.style.display = 'none';
-                            for (let r of rows) {
-                                r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
-                            }
+                            for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none'; }
                         }
                     } else {
-                        for (let r of rows) {
-                            r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
-                        }
+                        for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none'; }
                     }
                 }
                 function hitungTotal(id) {
@@ -329,23 +323,23 @@ app.get('/admin', (req, res) => {
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
                     let total = 0;
                     checks.forEach(c => {
-                        let price = c.getAttribute('data-price').replace(/\\./g, '');
+                        let price = c.getAttribute('data-price').replace(/\./g, '');
                         total += parseInt(price);
                     });
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
                 function prosesBayar(id, nama, tahun) {
                     const total = document.getElementById('total-' + id).innerText;
-                    if(total === "0") return alert("Pilih bulan pembayaran!");
+                    if(total === "0") return alert("Pilih bulan!");
                     const card = document.getElementById('card-' + id);
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
                     const itemIds = Array.from(checks).map(c => c.getAttribute('data-id'));
-                    if(confirm("Konfirmasi bayar Rp " + total + " untuk " + nama + "?")) {
+                    if(confirm("Konfirmasi Rp " + total + " untuk " + nama + "?")) {
                         fetch('/admin/konfirmasi-bayar', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ santriId: id, tahun: tahun, itemIds: itemIds })
-                        }).then(res => res.json()).then(d => { if(d.success) { alert('Berhasil!'); location.reload(); } });
+                        }).then(res => res.json()).then(d => { if(d.success) location.reload(); });
                     }
                 }
                 function updateStatus(id, s) {
@@ -355,25 +349,19 @@ app.get('/admin', (req, res) => {
                 function simpanC() {
                     fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) })
-                    .then(res => res.json()).then(d => { if(d.success) { alert('Tersimpan!'); location.reload(); } });
+                    .then(res => res.json()).then(d => { if(d.success) location.reload(); });
                 }
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
-                    // Gunakan penggabungan string manual agar VS Code tidak "merah"
-                    var html = '<div class="d-flex align-items-center mb-4">';
-                    html += '<img src="/uploads/' + d.berkas.foto + '" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;">';
-                    html += '<div><h3 class="fw-bold text-success mb-0">' + d.nama + '</h3><p class="text-muted small">' + d.jenjang + '</p></div></div>';
-                    html += '<div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6>';
-                    html += '<p class="small">NIK: ' + d.nik + '<br>Alamat: ' + d.alamat + '</p></div>';
-                    html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">Ayah: ' + d.namaAyah + '<br>WA: ' + d.whatsapp + '</p></div></div>';
-                    
-                    document.getElementById('isiM').innerHTML = html;
+                    document.getElementById('isiM').innerHTML = \`
+                        <div class="d-flex align-items-center mb-4"><img src="/uploads/\${d.berkas.foto}" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;"><div><h3 class="fw-bold text-success mb-0">\${d.nama}</h3><p class="text-muted small">\${d.jenjang}</p></div></div>
+                        <div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6><p class="small">NIK: \${d.nik}<br>Alamat: \${d.alamat}</p></div><div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">Ayah: \${d.namaAyah}<br>WA: \${d.whatsapp}</p></div></div>\`;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
             </script>
         </body>
         </html>
-    `);
+    \`);
 });
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
