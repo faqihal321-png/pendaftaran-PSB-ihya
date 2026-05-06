@@ -8,7 +8,7 @@ const ExcelJS = require('exceljs');
 
 const app = express();
 
-// --- KONFIGURASI PENYIMPANAN PERMANEN ---
+// --- KONFIGURASI PENYIMPANAN PERMANEN (RAILWAY VOLUME) ---
 const VOLUME_PATH = '/app/data_pondok';
 const isProduction = process.env.RAILWAY_ENVIRONMENT_ID ? true : false;
 const BASE_DIR = isProduction ? VOLUME_PATH : __dirname;
@@ -103,7 +103,6 @@ app.post('/admin/update-config', (req, res) => {
     res.json({ success: true });
 });
 
-// --- ADMIN LOGIN ---
 app.post('/login', (req, res) => {
     if (req.body.user === 'admin' && req.body.pass === 'pondok123') {
         req.session.isLoggedIn = true;
@@ -116,24 +115,21 @@ app.get('/login', (req, res) => {
         <!DOCTYPE html>
         <html lang="id">
         <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
             <title>Login Admin</title>
             <style>
-                body { background: linear-gradient(135deg, #1e4d2b 0%, #2e7d32 100%); height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; }
-                .login-card { background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 25px; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+                body { background: linear-gradient(135deg, #1e4d2b 0%, #2e7d32 100%); height: 100vh; display: flex; align-items: center; justify-content: center; }
+                .login-card { background: white; padding: 40px; border-radius: 20px; width: 100%; max-width: 350px; box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
             </style>
         </head>
         <body>
             <div class="login-card text-center">
-                <i class="fas fa-user-shield fa-4x text-success mb-3"></i>
-                <h3 class="fw-bold mb-4">Admin PSB</h3>
+                <h3 class="fw-bold mb-4">ADMIN PSB</h3>
                 <form action="/login" method="POST">
                     <input name="user" class="form-control mb-3" placeholder="Username" required>
                     <input name="pass" type="password" class="form-control mb-4" placeholder="Password" required>
-                    <button class="btn btn-success w-100 py-2 fw-bold">MASUK</button>
+                    <button class="btn btn-success w-100 fw-bold">MASUK</button>
                 </form>
             </div>
         </body>
@@ -146,41 +142,41 @@ app.get('/admin', (req, res) => {
     const data = readData();
     const config = readConfig();
     
-    // Statistik
+    // Perhitungan Statistik
     const totalSantri = data.length;
     const santriAktif = data.filter(p => p.status === 'Aktif').length;
     const santriTidakAktif = data.filter(p => p.status === 'Tidak Aktif').length;
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
     const santriMA = data.filter(p => p.jenjang === 'MA').length;
     
-    // Rows Santri
+    // Baris Tabel Data Santri Lengkap
     const rowsSantri = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
-        const fotoUrl = p.berkas.foto ? `/uploads/${p.berkas.foto}` : 'https://via.placeholder.com/35x45';
+        const fotoUrl = p.berkas.foto ? `/uploads/${p.berkas.foto}` : 'https://via.placeholder.com/40x50';
         return `
             <tr class="santri-row" data-name="${p.nama.toLowerCase()}">
                 <td class="text-center small">${index + 1}</td>
-                <td class="text-center"><img src="${fotoUrl}" style="width:35px; height:45px; object-fit:cover; border-radius:5px;"></td>
+                <td class="text-center"><img src="${fotoUrl}" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>
                 <td><b>${p.nama}</b><br><small class="text-muted" style="font-size:0.7rem;">${p.tanggal}</small></td>
                 <td class="text-center small">${p.jenjang || '-'}</td>
                 <td>
-                    <select class="form-select form-select-sm" onchange="updateStatus(${p.id}, this.value)">
+                    <select class="form-select form-select-sm fw-bold" onchange="updateStatus(${p.id}, this.value)">
                         <option value="Aktif" ${p.status === 'Aktif' ? 'selected' : ''}>🟢 Aktif</option>
                         <option value="Tidak Aktif" ${p.status === 'Tidak Aktif' ? 'selected' : ''}>🔴 Tidak Aktif</option>
                     </select>
                 </td>
-                <td><button class="btn btn-sm btn-success w-100" onclick="lihatDetail('${detailJson}')">DETAIL</button></td>
+                <td><button class="btn btn-sm btn-success w-100 fw-bold" onclick="lihatDetail('${detailJson}')">DETAIL</button></td>
             </tr>
         `;
     }).join('');
 
-    // List Pembayaran
+    // List Pembayaran Dua Kolom (Pondok & Makan)
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agt', 'Sept', 'Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-        const createChecklist = (prefix) => months.map(m => `
+        const createCheck = (prefix) => months.map(m => `
             <div class="col-4 col-md-3 mb-2">
                 <div class="form-check p-1 border rounded bg-white shadow-sm" style="font-size: 0.65rem;">
-                    <input class="form-check-input ms-0 me-1" type="checkbox" id="${prefix}-${p.id}-${m}">
+                    <input class="form-check-input ms-1 me-1" type="checkbox" id="${prefix}-${p.id}-${m}">
                     <label class="form-check-label fw-bold" for="${prefix}-${p.id}-${m}">${m}</label>
                 </div>
             </div>
@@ -188,20 +184,20 @@ app.get('/admin', (req, res) => {
 
         return `
             <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}">
-                <div class="card border-0 shadow-sm rounded-4">
-                    <div class="card-header bg-success text-white py-2 rounded-top-4 d-flex justify-content-between">
-                        <h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-2"></i> ${p.nama}</h6>
-                        <span class="badge bg-white text-success fw-bold">${p.jenjang || '-'}</span>
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-header bg-success text-white py-2 d-flex justify-content-between">
+                        <h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> ${p.nama}</h6>
+                        <span class="badge bg-white text-success small">${p.jenjang || '-'}</span>
                     </div>
                     <div class="card-body p-3">
                         <div class="row g-3">
                             <div class="col-md-6 border-end text-center">
-                                <p class="fw-bold text-success border-bottom pb-1 mb-2 small"><i class="fas fa-mosque me-1"></i> PONDOK (Rp ${config.biayaPondok})</p>
-                                <div class="row gx-1">${createChecklist('pondok')}</div>
+                                <p class="fw-bold text-success border-bottom pb-1 mb-2 small">PONDOK (Rp ${config.biayaPondok})</p>
+                                <div class="row gx-1">${createCheck('p')}</div>
                             </div>
                             <div class="col-md-6 text-center">
-                                <p class="fw-bold text-primary border-bottom pb-1 mb-2 small"><i class="fas fa-utensils me-1"></i> MAKAN (Rp ${config.biayaMakan})</p>
-                                <div class="row gx-1">${createChecklist('makan')}</div>
+                                <p class="fw-bold text-primary border-bottom pb-1 mb-2 small">MAKAN (Rp ${config.biayaMakan})</p>
+                                <div class="row gx-1">${createCheck('m')}</div>
                             </div>
                         </div>
                     </div>
@@ -214,24 +210,24 @@ app.get('/admin', (req, res) => {
         <!DOCTYPE html>
         <html lang="id">
         <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
             <title>Panel Admin PSB</title>
             <style>
                 body { background-color: #f4f7f6; font-family: sans-serif; }
-                .sidebar { min-width: 250px; background: #1e4d2b; min-height: 100vh; color: white; position: sticky; top: 0; }
-                .sidebar .nav-link { color: rgba(255,255,255,0.7); margin: 5px 15px; border-radius: 10px; border: none; background: none; text-align: left; width: 85%; }
+                .sidebar { min-width: 240px; background: #1e4d2b; min-height: 100vh; color: white; position: sticky; top: 0; }
+                .sidebar .nav-link { color: rgba(255,255,255,0.7); margin: 5px 15px; border-radius: 10px; border:none; background:none; text-align:left; width:88%; }
                 .sidebar .nav-link.active { background: rgba(255,255,255,0.15) !important; color: white; }
-                .main-content { width: 100%; padding: 30px; }
-                .stat-card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: white; }
+                .main-content { width: 100%; padding: 25px; }
+                .stat-card { border: none; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                .main-card { border: none; border-radius: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.05); background: white; }
                 .search-box { border-radius: 50px; padding-left: 15px; }
             </style>
         </head>
         <body>
             <div class="d-flex">
-                <nav class="sidebar">
+                <nav class="sidebar shadow">
                     <div class="p-4 text-center border-bottom border-white border-opacity-10 mb-3"><h4 class="fw-bold">ADMIN PSB</h4></div>
                     <div class="nav flex-column nav-pills">
                         <button class="nav-link active mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-th-large me-2"></i> Dashboard</button>
@@ -251,56 +247,47 @@ app.get('/admin', (req, res) => {
                                 <div class="col-md-4"><div class="card stat-card bg-success p-3"><h6>Aktif</h6><h2>${santriAktif}</h2></div></div>
                                 <div class="col-md-4"><div class="card stat-card bg-danger p-3"><h6>Tidak Aktif</h6><h2>${santriTidakAktif}</h2></div></div>
                                 <div class="col-md-4"><div class="card stat-card bg-primary p-3"><h6>Total</h6><h2>${totalSantri}</h2></div></div>
-                                <div class="col-md-6"><div class="card border-0 shadow-sm bg-white p-4 rounded-4 text-success">
-                                    <h5><i class="fas fa-money-bill-wave me-2"></i>Tarif Pondok: <b>Rp ${config.biayaPondok}</b></h5>
-                                </div></div>
-                                <div class="col-md-6"><div class="card border-0 shadow-sm bg-white p-4 rounded-4 text-primary">
-                                    <h5><i class="fas fa-utensils me-2"></i>Tarif Makan: <b>Rp ${config.biayaMakan}</b></h5>
-                                </div></div>
+                                <div class="col-md-6"><div class="card stat-card bg-info p-4"><h5><i class="fas fa-school me-2"></i>Santri MTs</h5><h1>${santriMTs}</h1></div></div>
+                                <div class="col-md-6"><div class="card stat-card bg-warning text-dark p-4"><h5><i class="fas fa-graduation-cap me-2"></i>Santri MA</h5><h1>${santriMA}</h1></div></div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6"><div class="card border-0 p-3 rounded-4 shadow-sm bg-white text-success"><h6>Tarif Pondok Aktif:</h6><h5 class="fw-bold mb-0">Rp ${config.biayaPondok}</h5></div></div>
+                                <div class="col-md-6"><div class="card border-0 p-3 rounded-4 shadow-sm bg-white text-primary"><h6>Tarif Makan Aktif:</h6><h5 class="fw-bold mb-0">Rp ${config.biayaMakan}</h5></div></div>
                             </div>
                         </div>
 
-                        <!-- DATA SANTRI -->
+                        <!-- DATA SANTRI LENGKAP -->
                         <div class="tab-pane fade" id="v-santri">
                             <div class="d-flex justify-content-between mb-3 align-items-center">
-                                <h4 class="fw-bold text-success text-uppercase">Data Santri</h4>
+                                <h4 class="fw-bold text-success">Manajemen Santri</h4>
                                 <input class="form-control w-25 search-box shadow-sm" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value)">
                             </div>
-                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="6" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
+                            <div class="card main-card p-3"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama & Waktu</th><th>Jenjang</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="6" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
                         </div>
 
                         <!-- PEMBAYARAN -->
                         <div class="tab-pane fade" id="v-bayar">
                             <div class="d-flex justify-content-between mb-4 align-items-center">
-                                <h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran</h4>
+                                <h4 class="fw-bold text-success">Ceklis Pembayaran</h4>
                                 <input class="form-control w-25 search-box shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)">
                             </div>
                             <div id="payment-container">${cardsBayar || '<div class="text-center p-5">Belum ada data.</div>'}</div>
                         </div>
 
-                        <!-- SETTING (BARU) -->
+                        <!-- SETTING HARGA -->
                         <div class="tab-pane fade" id="v-set">
-                            <h4 class="fw-bold text-success text-uppercase mb-4">Pengaturan Biaya Bulanan</h4>
-                            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 500px;">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Biaya Pondok (Rp)</label>
-                                    <input type="text" id="cfgPondok" class="form-control" value="${config.biayaPondok}">
-                                    <small class="text-muted">Contoh: 500.000</small>
-                                </div>
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold">Biaya Makan (Rp)</label>
-                                    <input type="text" id="cfgMakan" class="form-control" value="${config.biayaMakan}">
-                                    <small class="text-muted">Contoh: 400.000</small>
-                                </div>
-                                <button class="btn btn-success fw-bold px-4 shadow-sm" onclick="simpanConfig()">
-                                    <i class="fas fa-save me-2"></i>SIMPAN PERUBAHAN
-                                </button>
+                            <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Biaya</h4>
+                            <div class="card main-card p-4 bg-white shadow-sm" style="max-width: 450px;">
+                                <div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
+                                <div class="mb-4"><label class="form-label fw-bold small">Biaya Makan (Rp)</label><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div>
+                                <button class="btn btn-success fw-bold w-100" onclick="simpanC()">SIMPAN PERUBAHAN</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- Modal Detail -->
             <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -313,22 +300,15 @@ app.get('/admin', (req, res) => {
                     fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) })
                     .then(res => res.json()).then(d => { if(d.success) location.reload(); });
                 }
-                function simpanConfig() {
-                    const pondok = document.getElementById('cfgPondok').value;
-                    const makan = document.getElementById('cfgMakan').value;
-                    fetch('/admin/update-config', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ biayaPondok: pondok, biayaMakan: makan })
-                    }).then(res => res.json()).then(d => { 
-                        if(d.success) { alert('Berhasil disimpan!'); location.reload(); }
-                    });
+                function simpanC() {
+                    fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) })
+                    .then(res => res.json()).then(d => { if(d.success) { alert('Tersimpan!'); location.reload(); } });
                 }
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
                     document.getElementById('isiM').innerHTML = \`
-                        <div class="d-flex align-items-center mb-4"><img src="/uploads/\${d.berkas.foto}" class="rounded shadow me-3" style="width:100px; height:130px; object-fit:cover;"><div><h3 class="fw-bold text-success mb-0">\${d.nama}</h3><p class="text-muted">\${d.jenjang}</p></div></div>
-                        <div class="row"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6><p class="small">NIK: \${d.nik}<br>Alamat: \${d.alamat}</p></div><div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">Ayah: \${d.namaAyah}<br>WA: \${d.whatsapp}</p></div></div>
+                        <div class="d-flex align-items-center mb-4"><img src="/uploads/\${d.berkas.foto}" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;"><div><h3 class="fw-bold text-success mb-0">\${d.nama}</h3><p class="text-muted small">\${d.jenjang}</p></div></div>
+                        <div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6><p class="small">NIK: \${d.nik}<br>Alamat: \${d.alamat}</p></div><div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">Ayah: \${d.namaAyah}<br>WA: \${d.whatsapp}</p></div></div>
                     \`;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
