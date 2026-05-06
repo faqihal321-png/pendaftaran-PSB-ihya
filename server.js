@@ -64,15 +64,7 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
         const config = readConfig();
         const getFileName = (n) => (req.files && req.files[n]) ? req.files[n][0].filename : null;
         
-        // Membuat format Hari, Tanggal, Bulan, Tahun, Jam
-        const opsiWaktu = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric', 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        };
+        const opsiWaktu = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
         const waktuSkrg = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", ...opsiWaktu });
 
         const baru = {
@@ -81,13 +73,8 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
             status: 'Aktif',
             tahunDaftar: config.tahunAktif,
             pembayaran: {},
-            berkas: { 
-                ktp: getFileName('ktp'), 
-                ijazah: getFileName('ijazah'), 
-                foto: getFileName('foto'), 
-                kk: getFileName('kk') 
-            },
-            tanggal: waktuSkrg // Format: "Senin, 7 Mei 2026 00.00"
+            berkas: { ktp: getFileName('ktp'), ijazah: getFileName('ijazah'), foto: getFileName('foto'), kk: getFileName('kk') },
+            tanggal: waktuSkrg 
         };
         data.push(baru);
         saveData(data);
@@ -175,7 +162,12 @@ app.get('/admin', (req, res) => {
     const santriMA = data.filter(p => p.jenjang === 'SMA/MA').length;
 
     const rowsSantri = data.map((p, index) => {
-        const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
+        // Pencegahan error jika nama mengandung tanda kutip
+        const detailJson = JSON.stringify(p).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const safeNama = (p.nama || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const safeNamaLower = (p.nama || '').toLowerCase().replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const safeJSNama = (p.nama || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+        
         const fotoUrl = p.berkas.foto ? '/uploads/' + p.berkas.foto : 'https://via.placeholder.com/40x50';
         
         const btnB = (file, label, color) => {
@@ -183,28 +175,23 @@ app.get('/admin', (req, res) => {
             return '<a href="/uploads/'+file+'" target="_blank" class="btn btn-xs '+color+' fw-bold" style="font-size:0.65rem; padding:2px 5px;">'+label+'</a>';
         };
 
-        // --- Logika Bulan Lengkap ---
         let labelDaftar = p.tahunDaftar || '2025';
         if (p.tanggal) {
             const tglPart = p.tanggal.split(',')[0].split('/');
             if (tglPart.length === 3) {
                 const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
                 labelDaftar = bulanIndo[parseInt(tglPart[1])-1] + ' ' + tglPart[2];
-            } else {
-                labelDaftar = p.tanggal;
-            }
+            } else { labelDaftar = p.tanggal; }
         }
 
-        return '<tr class="santri-row" data-name="'+p.nama.toLowerCase()+'">' +
+        return '<tr class="santri-row" data-name="'+safeNamaLower+'">' +
             '<td class="text-center small">'+(index + 1)+'</td>' +
             '<td class="text-center"><img src="'+fotoUrl+'" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>' +
-            '<td><b>'+p.nama+'</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: '+labelDaftar+'</small></td>' +
+            '<td><b>'+safeNama+'</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: '+labelDaftar+'</small></td>' +
             '<td class="text-center small">'+(p.jenjang || '-')+'</td>' +
             '<td><div class="d-flex flex-wrap gap-1">' +
-                btnB(p.berkas.foto, 'FOTO', 'btn-primary') +
-                btnB(p.berkas.ijazah, 'IJAZAH', 'btn-secondary') +
-                btnB(p.berkas.kk, 'KK', 'btn-info text-white') +
-                btnB(p.berkas.ktp, 'KTP', 'btn-warning') +
+                btnB(p.berkas.foto, 'FOTO', 'btn-primary') + btnB(p.berkas.ijazah, 'IJAZAH', 'btn-secondary') +
+                btnB(p.berkas.kk, 'KK', 'btn-info text-white') + btnB(p.berkas.ktp, 'KTP', 'btn-warning') +
             '</div></td>' +
             '<td><select class="form-select form-select-sm fw-bold" onchange="updateStatus('+p.id+', this.value)">' +
                 '<option value="Aktif" '+(p.status === 'Aktif' ? 'selected' : '')+'>🟢 Aktif</option>' +
@@ -215,6 +202,9 @@ app.get('/admin', (req, res) => {
     }).join('');
 
     const cardsBayar = data.map((p) => {
+        const safeNama = (p.nama || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const safeNamaLower = (p.nama || '').toLowerCase().replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const safeJSNama = (p.nama || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
         const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
         
         let tahunDaftarAkurat = p.tahunDaftar;
@@ -257,17 +247,16 @@ app.get('/admin', (req, res) => {
         if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
         if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR TAHUN INI</h5></div>';
 
-        // TAMBAHKAN PEMANGGILAN WA DI ONCLICK BUTTON
-        return '<div class="bayar-row mb-4" data-name="'+p.nama.toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
+        return '<div class="bayar-row mb-4" data-name="'+safeNamaLower+'" id="card-'+p.id+'" style="display: none;">' +
             '<div class="card border-0 shadow-sm rounded-4 '+(isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : '')+'">' +
                 '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
-                    '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+p.nama+' ('+tahunAktif+')</h6>' +
+                    '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+safeNama+' ('+tahunAktif+')</h6>' +
                     (isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+tahunDaftarAkurat+'</span>')) +
                 '</div>' +
                 '<div class="card-body p-3">'+bodyHTML+'</div>' +
                 '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
                     '<div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
-                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+p.nama+'\', \''+tahunAktif+'\', \''+(p.whatsapp || '')+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
+                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+safeJSNama+'\', \''+tahunAktif+'\', \''+(p.whatsapp || '')+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -341,8 +330,10 @@ app.get('/admin', (req, res) => {
                 </div>
             </div>
             
+            <!-- Modal Detail Santri -->
             <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
             
+            <!-- Modal Kwitansi -->
             <div class="modal fade" id="mKwitansi" data-bs-backdrop="static" tabindex="-1">
                 <div class="modal-dialog modal-lg modal-dialog-centered">
                     <div class="modal-content border-0 rounded-4 overflow-hidden shadow-lg">
@@ -353,41 +344,66 @@ app.get('/admin', (req, res) => {
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
-                // FUNGSI PENCARIAN (SEARCH) YANG SUDAH TERVERIFIKASI
-                function filterT(c, q, strict) {
-                    const rows = document.getElementsByClassName(c);
-                    const query = q.toLowerCase().trim();
-                    const hint = document.getElementById('hint-bayar');
+                // FUNGSI PENCARIAN TERAMAN (Support semua browser)
+                function filterT(className, q, strict) {
+                    var rows = document.getElementsByClassName(className);
+                    var query = q ? q.toLowerCase().trim() : "";
+                    var hint = document.getElementById('hint-bayar');
+                    var adaHasil = false;
 
-                    if (strict) {
-                        if (query === "") {
-                            if(hint) hint.style.display = 'block';
-                            for (let r of rows) r.style.display = 'none';
+                    // Menggunakan For Loop klasik yang pasti didukung semua browser
+                    for (var i = 0; i < rows.length; i++) {
+                        var r = rows[i];
+                        var dataName = r.getAttribute('data-name') || "";
+                        
+                        if (strict) {
+                            if (query === "") {
+                                r.style.display = 'none';
+                            } else {
+                                if (dataName.indexOf(query) !== -1) {
+                                    r.style.display = '';
+                                    adaHasil = true;
+                                } else {
+                                    r.style.display = 'none';
+                                }
+                            }
                         } else {
-                            if(hint) hint.style.display = 'none';
-                            for (let r of rows) {
-                                r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
+                            if (dataName.indexOf(query) !== -1) {
+                                r.style.display = '';
+                            } else {
+                                r.style.display = 'none';
                             }
                         }
-                    } else {
-                        for (let r of rows) {
-                            r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
+                    }
+
+                    // Logika Text Hint
+                    if (strict && hint) {
+                        if (query === "") {
+                            hint.style.display = 'block';
+                            hint.innerHTML = '<h5><i class="fas fa-search me-2"></i> Silakan cari nama santri untuk mengelola pembayaran.</h5>';
+                        } else {
+                            if (adaHasil) {
+                                hint.style.display = 'none';
+                            } else {
+                                hint.style.display = 'block';
+                                hint.innerHTML = '<h5 class="text-danger mt-4"><i class="fas fa-exclamation-circle me-2"></i> Santri "' + q + '" tidak ditemukan!</h5>';
+                            }
                         }
                     }
                 }
                 
                 function hitungTotal(id) {
-                    const card = document.getElementById('card-' + id);
-                    const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
-                    let total = 0;
-                    checks.forEach(c => {
-                        let price = c.getAttribute('data-price').replace(/\\./g, '');
+                    var card = document.getElementById('card-' + id);
+                    var checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
+                    var total = 0;
+                    for (var i = 0; i < checks.length; i++) {
+                        var c = checks[i];
+                        var price = c.getAttribute('data-price').replace(/\\./g, '');
                         total += parseInt(price);
-                    });
+                    }
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
                 
-                // FUNGSI DOWNLOAD PDF MENGGUNAKAN HTML2PDF
                 function downloadPDF(namaSantri) {
                     const el = document.getElementById('area-cetak-kwitansi');
                     const opt = {
@@ -400,10 +416,8 @@ app.get('/admin', (req, res) => {
                     html2pdf().set(opt).from(el).save();
                 }
 
-                // FUNGSI TAMPILKAN POP-UP KWITANSI & WA
                 function tampilkanKwitansi(nama, total, listPondok, listMakan, wa) {
                     let cleanWa = wa ? wa.replace(/^0/, '62') : '';
-                    
                     let pondokStr = listPondok.length > 0 ? listPondok.join(', ') : '-';
                     let makanStr = listMakan.length > 0 ? listMakan.join(', ') : '-';
 
@@ -412,10 +426,8 @@ app.get('/admin', (req, res) => {
                     msg += '*Rincian:*%0A%E2%96%B8%20Bulanan%20Pondok%3A%20' + encodeURIComponent(pondokStr) + '%0A';
                     msg += '%E2%96%B8%20Uang%20Makan%3A%20' + encodeURIComponent(makanStr) + '%0A%0ATerima%20kasih.';
                     let waLink = 'https://wa.me/' + cleanWa + '?text=' + msg;
-                    
                     let tglSkrg = new Date().toLocaleString('id-ID');
 
-                    // --- AREA YANG AKAN DIJADIKAN PDF (A5 LANDSCAPE) ---
                     var html = '<div id="area-cetak-kwitansi" style="padding: 30px; background: white; font-family: Arial, sans-serif; color: black;">';
                     html += '<div style="text-align: center; border-bottom: 3px double #1e4d2b; padding-bottom: 15px; margin-bottom: 20px;">';
                     html += '<h2 style="margin: 0; color: #1e4d2b; font-weight: bold; text-transform: uppercase;">KWITANSI PEMBAYARAN</h2>';
@@ -433,9 +445,8 @@ app.get('/admin', (req, res) => {
                     html += '<tr><td style="padding: 10px 0; color: #555;">Tanggal</td><td style="padding: 10px 0;">: ' + tglSkrg + '</td></tr>';
                     html += '</table>';
                     html += '<div style="margin-top: 40px; text-align: right; padding-right: 20px;"><p style="margin-bottom: 60px; color:#555;">Admin Keuangan,</p><p style="font-weight: bold; text-decoration: underline;">( .................................... )</p></div>';
-                    html += '</div>'; // Tutup area cetak
+                    html += '</div>'; 
                     
-                    // --- AREA TOMBOL AKSI BAWAH ---
                     html += '<div class="p-4 bg-light border-top d-flex flex-column gap-2">';
                     html += '<button onclick="downloadPDF(\'' + nama + '\')" class="btn btn-danger fw-bold py-2 shadow-sm"><i class="fas fa-file-pdf me-2"></i> DOWNLOAD PDF (CETAK)</button>';
                     html += '<a href="' + waLink + '" target="_blank" class="btn btn-success fw-bold py-2 shadow-sm"><i class="fab fa-whatsapp me-2"></i> KIRIM WA KE ORANG TUA</a>';
@@ -446,54 +457,52 @@ app.get('/admin', (req, res) => {
                     new bootstrap.Modal(document.getElementById('mKwitansi')).show();
                 }
 
-                // FUNGSI MEMPROSES BAYAR & MENGELOMPOKKAN BULAN PONDOK/MAKAN
                 function prosesBayar(id, nama, tahun, wa) {
-                    const total = document.getElementById('total-' + id).innerText;
+                    var total = document.getElementById('total-' + id).innerText;
                     if(total === "0") return alert("Pilih bulan pembayaran!");
                     
-                    const card = document.getElementById('card-' + id);
-                    const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
-                    const itemIds = Array.from(checks).map(c => c.getAttribute('data-id'));
+                    var card = document.getElementById('card-' + id);
+                    var checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
+                    var itemIds = [];
+                    var listPondok = [];
+                    var listMakan = [];
                     
-                    let listPondok = [];
-                    let listMakan = [];
-                    checks.forEach(c => {
-                        let isPondok = c.id.startsWith('p-');
-                        let textBulan = c.nextElementSibling.innerText;
+                    for (var i = 0; i < checks.length; i++) {
+                        var c = checks[i];
+                        itemIds.push(c.getAttribute('data-id'));
+                        var isPondok = c.id.startsWith('p-');
+                        var textBulan = c.nextElementSibling.innerText;
                         if(isPondok) {
                             listPondok.push(textBulan);
                         } else {
                             listMakan.push(textBulan);
                         }
-                    });
+                    }
 
                     if(confirm("Konfirmasi bayar Rp " + total + " untuk " + nama + "?")) {
                         fetch('/admin/konfirmasi-bayar', {
                             method: 'POST',
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ santriId: id, tahun: tahun, itemIds: itemIds })
-                        }).then(res => res.json()).then(d => { 
-                            if(d.success) {
-                                // Panggil kwitansi pop-up
-                                tampilkanKwitansi(nama, total, listPondok, listMakan, wa);
-                            }
+                        }).then(function(res) { return res.json(); }).then(function(d) { 
+                            if(d.success) tampilkanKwitansi(nama, total, listPondok, listMakan, wa);
                         });
                     }
                 }
                 
                 function updateStatus(id, s) {
                     fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) })
-                    .then(res => res.json()).then(d => { if(d.success) location.reload(); });
+                    .then(function(res){ return res.json(); }).then(function(d){ if(d.success) location.reload(); });
                 }
                 
                 function simpanC() {
                     fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, 
                     body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) })
-                    .then(res => res.json()).then(d => { if(d.success) { alert('Tersimpan!'); location.reload(); } });
+                    .then(function(res){ return res.json(); }).then(function(d){ if(d.success) { alert('Tersimpan!'); location.reload(); } });
                 }
                 
                 function lihatDetail(js) {
-                    const d = JSON.parse(js);
+                    var d = JSON.parse(js);
                     var html = '<div class="d-flex align-items-center mb-4">';
                     html += '<img src="/uploads/' + d.berkas.foto + '" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;">';
                     html += '<div><h3 class="fw-bold text-success mb-0">' + d.nama + '</h3><p class="text-muted small">' + d.jenjang + '</p></div></div>';
@@ -506,7 +515,6 @@ app.get('/admin', (req, res) => {
                     html += '<b>Ayah:</b> ' + d.namaAyah + ' (' + (d.pekerjaanAyah || '-') + ')<br>';
                     html += '<b>Ibu:</b> ' + (d.namaIbu || '-') + ' (' + (d.pekerjaanIbu || '-') + ')<br>';
                     html += '<b>WA:</b> ' + d.whatsapp + '</p></div></div>';
-                    
                     document.getElementById('isiM').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
