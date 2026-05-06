@@ -33,7 +33,7 @@ const saveData = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null
 const readConfig = () => {
     try {
         if (!fs.existsSync(CONFIG_FILE)) {
-            const def = { biayaPondok: "500.000", biayaMakan: "400.000" };
+            const def = { biayaPondok: "150.000", biayaMakan: "200.000" };
             fs.writeFileSync(CONFIG_FILE, JSON.stringify(def));
             return def;
         }
@@ -103,7 +103,7 @@ app.post('/admin/update-config', (req, res) => {
     res.json({ success: true });
 });
 
-// --- ADMIN LOGIN ---
+// --- ADMIN PANEL ---
 app.post('/login', (req, res) => {
     if (req.body.user === 'admin' && req.body.pass === 'pondok123') {
         req.session.isLoggedIn = true;
@@ -130,7 +130,7 @@ app.get('/login', (req, res) => {
                 <form action="/login" method="POST">
                     <input name="user" class="form-control mb-3" placeholder="Username" required>
                     <input name="pass" type="password" class="form-control mb-4" placeholder="Password" required>
-                    <button class="btn btn-success w-100 fw-bold shadow-sm">MASUK</button>
+                    <button class="btn btn-success w-100 fw-bold">MASUK</button>
                 </form>
             </div>
         </body>
@@ -149,11 +149,10 @@ app.get('/admin', (req, res) => {
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
     const santriMA = data.filter(p => p.jenjang === 'MA').length;
     
-    // Rows Tabel Santri dengan tombol Berkas
+    // Rows Tabel Santri
     const rowsSantri = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
         const fotoUrl = p.berkas.foto ? `/uploads/${p.berkas.foto}` : 'https://via.placeholder.com/40x50';
-        
         const btnBerkas = (file, label, color) => file 
             ? `<a href="/uploads/${file}" target="_blank" class="btn btn-xs ${color} fw-bold" style="font-size:0.65rem; padding:2px 5px;">${label}</a>` 
             : `<button class="btn btn-xs btn-light disabled text-muted" style="font-size:0.65rem; padding:2px 5px;">${label}</button>`;
@@ -164,20 +163,8 @@ app.get('/admin', (req, res) => {
                 <td class="text-center"><img src="${fotoUrl}" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>
                 <td><b>${p.nama}</b><br><small class="text-muted" style="font-size:0.7rem;">${p.tanggal}</small></td>
                 <td class="text-center small">${p.jenjang || '-'}</td>
-                <td>
-                    <div class="d-flex flex-wrap gap-1">
-                        ${btnBerkas(p.berkas.foto, 'FOTO', 'btn-primary')}
-                        ${btnBerkas(p.berkas.ijazah, 'IJAZAH', 'btn-secondary')}
-                        ${btnBerkas(p.berkas.kk, 'KK', 'btn-info text-white')}
-                        ${btnBerkas(p.berkas.ktp, 'KTP', 'btn-warning')}
-                    </div>
-                </td>
-                <td>
-                    <select class="form-select form-select-sm fw-bold" onchange="updateStatus(${p.id}, this.value)">
-                        <option value="Aktif" ${p.status === 'Aktif' ? 'selected' : ''}>🟢 Aktif</option>
-                        <option value="Tidak Aktif" ${p.status === 'Tidak Aktif' ? 'selected' : ''}>🔴 Tidak Aktif</option>
-                    </select>
-                </td>
+                <td><div class="d-flex flex-wrap gap-1">${btnBerkas(p.berkas.foto, 'FOTO', 'btn-primary')}${btnBerkas(p.berkas.ijazah, 'IJAZAH', 'btn-secondary')}${btnBerkas(p.berkas.kk, 'KK', 'btn-info text-white')}${btnBerkas(p.berkas.ktp, 'KTP', 'btn-warning')}</div></td>
+                <td><select class="form-select form-select-sm fw-bold" onchange="updateStatus(${p.id}, this.value)"><option value="Aktif" ${p.status === 'Aktif' ? 'selected' : ''}>🟢 Aktif</option><option value="Tidak Aktif" ${p.status === 'Tidak Aktif' ? 'selected' : ''}>🔴 Tidak Aktif</option></select></td>
                 <td><button class="btn btn-sm btn-success w-100 fw-bold shadow-sm" onclick="lihatDetail('${detailJson}')">DETAIL</button></td>
             </tr>
         `;
@@ -189,13 +176,13 @@ app.get('/admin', (req, res) => {
         const createCheck = (prefix) => months.map(m => `
             <div class="col-4 col-md-3 mb-2">
                 <div class="form-check p-1 border rounded bg-white shadow-sm" style="font-size: 0.65rem;">
-                    <input class="form-check-input ms-1 me-1" type="checkbox" id="${prefix}-${p.id}-${m}">
+                    <input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="${prefix}-${p.id}-${m}" data-price="${prefix === 'p' ? config.biayaPondok : config.biayaMakan}" onchange="hitungTotal(${p.id})">
                     <label class="form-check-label fw-bold" for="${prefix}-${p.id}-${m}">${m}</label>
                 </div>
             </div>`).join('');
 
         return `
-            <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}">
+            <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}" id="card-${p.id}">
                 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
                     <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
                         <h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> ${p.nama}</h6>
@@ -204,14 +191,23 @@ app.get('/admin', (req, res) => {
                     <div class="card-body p-3">
                         <div class="row g-3">
                             <div class="col-md-6 border-end text-center">
-                                <p class="fw-bold text-success border-bottom pb-1 mb-2 small">PONDOK (Rp ${config.biayaPondok})</p>
+                                <p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok (Rp ${config.biayaPondok})</p>
                                 <div class="row gx-1">${createCheck('p')}</div>
                             </div>
                             <div class="col-md-6 text-center">
-                                <p class="fw-bold text-primary border-bottom pb-1 mb-2 small">MAKAN (Rp ${config.biayaMakan})</p>
+                                <p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan (Rp ${config.biayaMakan})</p>
                                 <div class="row gx-1">${createCheck('m')}</div>
                             </div>
                         </div>
+                    </div>
+                    <div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span>
+                            <h4 class="text-success fw-bold mb-0 mt-1">Rp <span id="total-${p.id}">0</span></h4>
+                        </div>
+                        <button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="konfirmasiBayar(${p.id}, '${p.nama}')">
+                            <i class="fas fa-money-check-alt me-2"></i> BAYAR SEKARANG
+                        </button>
                     </div>
                 </div>
             </div>`;
@@ -267,31 +263,21 @@ app.get('/admin', (req, res) => {
                             </div>
                         </div>
 
-                        <!-- DATA SANTRI DENGAN BERKAS -->
+                        <!-- DATA SANTRI -->
                         <div class="tab-pane fade" id="v-santri">
-                            <div class="d-flex justify-content-between mb-3 align-items-center">
-                                <h4 class="fw-bold text-success text-uppercase">Manajemen Santri</h4>
-                                <input class="form-control w-25 search-box shadow-sm" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value)">
-                            </div>
-                            <div class="card main-card p-3">
-                                <div class="table-responsive">
-                                    <table class="table table-hover align-middle">
-                                        <thead class="table-light">
-                                            <tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr>
-                                        </thead>
-                                        <tbody>${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody>
-                                    </table>
-                                </div>
-                            </div>
+                            <div class="d-flex justify-content-between mb-3 align-items-center"><h4 class="fw-bold text-success text-uppercase">Manajemen Santri</h4><input class="form-control w-25 search-box shadow-sm" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value)"></div>
+                            <div class="card main-card p-3"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
                         </div>
 
+                        <!-- PEMBAYARAN -->
                         <div class="tab-pane fade" id="v-bayar">
-                            <h4 class="fw-bold text-success text-uppercase mb-4">Ceklis Pembayaran</h4>
+                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran</h4><input class="form-control w-25 search-box shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)"></div>
                             <div id="payment-container">${cardsBayar || '<div class="text-center p-5">Belum ada data.</div>'}</div>
                         </div>
 
+                        <!-- SETTING -->
                         <div class="tab-pane fade" id="v-set">
-                            <h4 class="fw-bold text-success text-uppercase mb-4">Pengaturan Biaya</h4>
+                            <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Biaya</h4>
                             <div class="card main-card p-4 bg-white shadow-sm" style="max-width: 450px;">
                                 <div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
                                 <div class="mb-4"><label class="form-label fw-bold small">Biaya Makan (Rp)</label><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div>
@@ -310,14 +296,37 @@ app.get('/admin', (req, res) => {
                     const rows = document.getElementsByClassName(c);
                     for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(q.toLowerCase()) ? '' : 'none'; }
                 }
+                
+                function hitungTotal(id) {
+                    const card = document.getElementById('card-' + id);
+                    const checks = card.querySelectorAll('.pay-check:checked');
+                    let total = 0;
+                    checks.forEach(c => {
+                        let price = c.getAttribute('data-price').replace(/\\./g, '');
+                        total += parseInt(price);
+                    });
+                    document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
+                }
+
+                function konfirmasiBayar(id, nama) {
+                    const total = document.getElementById('total-' + id).innerText;
+                    if(total === "0") return alert("Silakan pilih bulan yang akan dibayar!");
+                    if(confirm("Konfirmasi pembayaran untuk " + nama + " sebesar Rp " + total + "?")) {
+                        alert("Pembayaran Berhasil Dikonfirmasi!");
+                        // Di sini bisa ditambahkan fetch ke backend untuk menyimpan status bayar permanen
+                    }
+                }
+
                 function updateStatus(id, s) {
                     fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) })
                     .then(res => res.json()).then(d => { if(d.success) location.reload(); });
                 }
+
                 function simpanC() {
                     fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) })
                     .then(res => res.json()).then(d => { if(d.success) { alert('Tersimpan!'); location.reload(); } });
                 }
+
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
                     document.getElementById('isiM').innerHTML = \`
