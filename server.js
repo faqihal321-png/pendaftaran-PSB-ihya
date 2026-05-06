@@ -21,18 +21,24 @@ const UPLOAD_DIR = path.join(BASE_DIR, 'uploads');
 if (!fs.existsSync(BASE_DIR)) fs.mkdirSync(BASE_DIR, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// --- FUNGSI PEMBANTU ---[cite: 7]
+// --- FUNGSI PEMBANTU ---
 const readData = () => {
     try {
-        if (!fs.existsSync(DATA_FILE)) { fs.writeFileSync(DATA_FILE, '[]'); return []; }
+        if (!fs.existsSync(DATA_FILE)) { 
+            fs.writeFileSync(DATA_FILE, '[]'); 
+            return []; 
+        }
         const content = fs.readFileSync(DATA_FILE, 'utf-8').trim();
         return content ? JSON.parse(content) : [];
-    } catch (e) { return []; }
+    } catch (e) { 
+        console.error("Error membaca data:", e);
+        return []; 
+    }
 };
 
 const saveData = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 
-// --- MIDDLEWARE ---[cite: 7]
+// --- MIDDLEWARE ---
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use('/uploads', express.static(UPLOAD_DIR)); // Folder upload dari Volume[cite: 7, 9]
@@ -49,7 +55,7 @@ const upload = multer({ storage: multer.diskStorage({
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 })});
 
-// --- ROUTES ---[cite: 7, 10]
+// --- ROUTES ---
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.post('/daftar', upload.fields([
@@ -73,73 +79,90 @@ app.post('/daftar', upload.fields([
 
         data.push(baru);
         saveData(data);
-        res.send(`<h2>✅ Pendaftaran Berhasil!</h2><p>Data tersimpan permanen di Volume.</p><a href="/">Kembali</a>`);
-    } catch (e) { res.status(500).send("Gagal: " + e.message); }
+        res.send(`
+            <div style="text-align:center; font-family:sans-serif; margin-top:50px;">
+                <h2 style="color:#2e7d32;">✅ Pendaftaran Berhasil!</h2>
+                <p>Data tersimpan permanen di Volume server.</p>
+                <a href="/" style="text-decoration:none; color:white; background:#1e4d2b; padding:10px 20px; border-radius:5px;">Kembali</a>
+            </div>
+        `);
+    } catch (e) { 
+        res.status(500).send("Gagal simpan data: " + e.message); 
+    }
 });
 
-// --- ADMIN ---[cite: 7]
+// --- ADMIN PANEL ---[cite: 7]
 app.get('/login', (req, res) => {
-    res.send('<form action="/login" method="POST">User: <input name="user"><br>Pass: <input name="pass" type="password"><br><button>Login</button></form>');
+    res.send(`
+        <div style="max-width:300px; margin:100px auto; font-family:sans-serif; text-align:center;">
+            <h2>Login Admin</h2>
+            <form action="/login" method="POST">
+                <input name="user" placeholder="Username" style="width:100%; margin-bottom:10px; padding:8px;" required><br>
+                <input name="pass" type="password" placeholder="Password" style="width:100%; margin-bottom:10px; padding:8px;" required><br>
+                <button type="submit" style="width:100%; padding:10px; background:#1e4d2b; color:white; border:none; border-radius:5px; cursor:pointer;">Login</button>
+            </form>
+        </div>
+    `);
 });
 
 app.post('/login', (req, res) => {
     if (req.body.user === 'admin' && req.body.pass === 'pondok123') {
         req.session.isLoggedIn = true;
         res.redirect('/admin');
-    } else { res.send("Gagal login."); }
+    } else { 
+        res.send("Gagal login. <a href='/login'>Coba lagi</a>"); 
+    }
 });
 
 app.get('/admin', (req, res) => {
     if (!req.session.isLoggedIn) return res.redirect('/login');
     const data = readData();
     
-    // Membuat baris tabel dari data JSON
-   const rows = data.map((p, index) => {
-    // Fungsi pembantu untuk membuat tombol jika file ada
-    const createBtn = (file, label, colorClass) => {
-        return file ? `<a href="/uploads/${file}" target="_blank" class="btn btn-sm ${colorClass} me-1">${label}</a>` : '';
-    };
+    // Membuat baris tabel dari data JSON[cite: 7]
+    const rows = data.map((p, index) => {
+        const createBtn = (file, label, colorClass) => {
+            return file ? `<a href="/uploads/${file}" target="_blank" class="btn btn-sm ${colorClass} me-1 mb-1">${label}</a>` : '';
+        };
 
-    return `
-        <tr>
-            <td>${index + 1}</td>
-            <td>${p.tanggal}</td>
-            <td><b>${p.nama}</b></td>
-            <td>${p.jenjang}</td>
-            <td><a href="https://wa.me/${p.whatsapp}" target="_blank" class="text-decoration-none">${p.whatsapp}</a></td>
-            <td>
-                <div class="d-flex flex-wrap">
-                    ${createBtn(p.berkas.foto, 'Foto', 'btn-primary')}
-                    ${createBtn(p.berkas.kk, 'KK', 'btn-outline-secondary')}
-                    ${createBtn(p.berkas.ktp, 'KTP', 'btn-outline-info')}
-                    ${createBtn(p.berkas.ijazah, 'Ijazah', 'btn-outline-success')}
-                </div>
-            </td>
-        </tr>
-    `;
-}).join('');[cite: 7]
+        return `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${p.tanggal}</td>
+                <td><b>${p.nama}</b></td>
+                <td>${p.jenjang || '-'}</td>
+                <td><a href="https://wa.me/${p.whatsapp}" target="_blank" class="text-decoration-none">${p.whatsapp}</a></td>
+                <td>
+                    <div class="d-flex flex-wrap">
+                        ${createBtn(p.berkas.foto, 'Foto', 'btn-primary')}
+                        ${createBtn(p.berkas.kk, 'KK', 'btn-outline-secondary')}
+                        ${createBtn(p.berkas.ktp, 'KTP', 'btn-outline-info')}
+                        ${createBtn(p.berkas.ijazah, 'Ijazah', 'btn-outline-success')}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
 
     res.send(`
         <!DOCTYPE html>
         <html lang="id">
         <head>
             <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <title>Panel Admin PSB</title>
             <style>
-                body { background-color: #f8f9fa; padding: 30px; }
-                .main-card { border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                body { background-color: #f8f9fa; padding: 20px; font-family: sans-serif; }
+                .main-card { border-radius: 15px; border:none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
                 .table thead { background-color: #1e4d2b; color: white; }
             </style>
         </head>
         <body>
-            <div class="container">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="fw-bold text-success">Dashboard Admin PSB</h2>
-                    <div>
-                        <a href="/admin/export" class="btn btn-success shadow-sm">
-                            <i class="fas fa-file-excel"></i> Download Excel
-                        </a>
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+                    <h2 class="fw-bold text-success mb-2">Dashboard Admin PSB</h2>
+                    <div class="mb-2">
+                        <a href="/admin/export" class="btn btn-success shadow-sm">Download Excel</a>
                         <a href="/logout" class="btn btn-danger shadow-sm ms-2">Logout</a>
                     </div>
                 </div>
@@ -176,25 +199,26 @@ app.get('/admin/export', async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Pendaftar');
     sheet.columns = [
-        { header: 'Nama', key: 'nama', width: 20 },
+        { header: 'Tanggal', key: 'tanggal', width: 20 },
+        { header: 'Nama', key: 'nama', width: 25 },
         { header: 'WA', key: 'whatsapp', width: 15 },
-        { header: 'Tanggal', key: 'tanggal', width: 20 }
+        { header: 'Jenjang', key: 'jenjang', width: 15 },
+        { header: 'NISN', key: 'nisn', width: 15 }
     ];
     data.forEach(p => sheet.addRow(p));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=pendaftar.xlsx');
+    res.setHeader('Content-Disposition', 'attachment; filename=Data_Pendaftar_PSB.xlsx');
     await workbook.xlsx.write(res);
     res.end();
 });
 
-// ... (Pastikan bagian rute /logout sudah ditutup)
 app.get('/logout', (req, res) => { 
     req.session.destroy(); 
     res.redirect('/login'); 
 });
 
-// Konfigurasi Port untuk Railway
+// Konfigurasi Port untuk Railway[cite: 7]
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Aplikasi aktif di port ${PORT}`);
 });
