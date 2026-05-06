@@ -67,7 +67,7 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
             id: Date.now(),
             ...req.body,
             status: 'Aktif',
-            tahunDaftar: config.tahunAktif, // Simpan tahun daftar saat ini
+            tahunDaftar: config.tahunAktif,
             pembayaran: {},
             berkas: { ktp: getFileName('ktp'), ijazah: getFileName('ijazah'), foto: getFileName('foto'), kk: getFileName('kk') },
             tanggal: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })
@@ -174,19 +174,21 @@ app.get('/admin', (req, res) => {
                 <td><div class="d-flex flex-wrap gap-1">${btnBerkas(p.berkas.foto, 'FOTO', 'btn-primary')}${btnBerkas(p.berkas.ijazah, 'IJAZAH', 'btn-secondary')}${btnBerkas(p.berkas.kk, 'KK', 'btn-info text-white')}${btnBerkas(p.berkas.ktp, 'KTP', 'btn-warning')}</div></td>
                 <td><select class="form-select form-select-sm fw-bold" onchange="updateStatus(${p.id}, this.value)"><option value="Aktif" ${p.status === 'Aktif' ? 'selected' : ''}>🟢 Aktif</option><option value="Tidak Aktif" ${p.status === 'Tidak Aktif' ? 'selected' : ''}>🔴 Tidak Aktif</option></select></td>
                 <td><button class="btn btn-sm btn-success w-100 fw-bold shadow-sm" onclick="lihatDetail('${detailJson}')">DETAIL</button></td>
-            </tr>
-        `;
+            </tr>`;
     }).join('');
 
     // --- CARDS PEMBAYARAN ---
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agt', 'Sept', 'Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-        const tahunDaftar = p.tahunDaftar || "2025";
+        const tahunDaftarInt = parseInt(p.tahunDaftar || "2025");
+        const tahunAktifInt = parseInt(tahunAktif);
         
-        // Cek tunggakan tahun lalu HANYA JIKA tahun aktif > tahun daftar
+        const perluCekTunggakan = tahunAktifInt > tahunDaftarInt;
         const bayarLalu = p.pembayaran[tahunLalu] || {};
         const lunasLalu = months.every(m => bayarLalu['p-'+m] && bayarLalu['m-'+m]);
-        const isLocked = (parseInt(tahunAktif) > parseInt(tahunDaftar)) && !lunasLalu;
+        
+        const isLocked = perluCekTunggakan && !lunasLalu;
+        const belumDaftar = tahunAktifInt < tahunDaftarInt;
         const isTidakAktif = p.status === 'Tidak Aktif';
 
         const createCheck = (prefix) => months.map(m => {
@@ -202,9 +204,8 @@ app.get('/admin', (req, res) => {
             </div>`;
         }).join('');
 
-        const cardBody = isTidakAktif 
-            ? `<div class="py-5 text-center"><h5 class="text-danger fw-bold"><i class="fas fa-user-slash me-2"></i> SANTRI TIDAK ADA TAGIHAN KARENA TIDAK AKTIF</h5></div>`
-            : `<div class="row g-3 ${isLocked ? 'pointer-events-none' : ''}">
+        let cardBodyContent = `
+            <div class="row g-3 ${isLocked ? 'pointer-events-none' : ''}">
                 <div class="col-md-6 border-end text-center">
                     <p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok (Rp ${config.biayaPondok})</p>
                     <div class="row gx-1">${createCheck('p')}</div>
@@ -213,27 +214,22 @@ app.get('/admin', (req, res) => {
                     <p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan (Rp ${config.biayaMakan})</p>
                     <div class="row gx-1">${createCheck('m')}</div>
                 </div>
-               </div>`;
+            </div>`;
+
+        if (isTidakAktif) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK ADA TAGIHAN KARENA TIDAK AKTIF</h5></div>`;
+        if (belumDaftar) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-muted fw-bold">SANTRI BELUM MENDAFTAR PADA TAHUN INI</h5></div>`;
 
         return `
             <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}" id="card-${p.id}">
-                <div class="card border-0 shadow-sm rounded-4 ${isLocked || isTidakAktif ? 'opacity-75' : ''}">
+                <div class="card border-0 shadow-sm rounded-4 ${isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : ''}">
                     <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
                         <h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> ${p.nama} (${tahunAktif})</h6>
-                        ${isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Tahun Daftar: '+tahunDaftar+'</span>')}
+                        ${isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+(p.tahunDaftar || '2025')+'</span>')}
                     </div>
-                    <div class="card-body p-3">
-                        ${cardBody}
-                    </div>
+                    <div class="card-body p-3">${cardBodyContent}</div>
                     <div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">
-                        <div>
-                            <span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span>
-                            <h4 class="text-success fw-bold mb-0">Rp <span id="total-${p.id}">0</span></h4>
-                        </div>
-                        <button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" 
-                            onclick="prosesBayar(${p.id}, '${p.nama}', '${tahunAktif}')" ${isLocked || isTidakAktif ? 'disabled' : ''}>
-                            <i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR
-                        </button>
+                        <div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-${p.id}">0</span></h4></div>
+                        <button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar(${p.id}, '${p.nama}', '${tahunAktif}')" ${isLocked || isTidakAktif || belumDaftar ? 'disabled' : ''}><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>
                     </div>
                 </div>
             </div>`;
@@ -254,6 +250,7 @@ app.get('/admin', (req, res) => {
                 .sidebar .nav-link.active { background: rgba(255,255,255,0.15) !important; color: white; }
                 .main-content { width: 100%; padding: 25px; }
                 .stat-card { border: none; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                .search-box { border-radius: 50px; padding-left: 15px; }
                 .pointer-events-none { pointer-events: none; }
             </style>
         </head>
@@ -271,7 +268,6 @@ app.get('/admin', (req, res) => {
                 </nav>
                 <div class="main-content">
                     <div class="tab-content">
-                        <!-- DASHBOARD -->
                         <div class="tab-pane fade show active" id="v-dash">
                             <h3 class="fw-bold text-success mb-4 text-uppercase">Dashboard</h3>
                             <div class="row g-3 mb-4">
@@ -319,7 +315,7 @@ app.get('/admin', (req, res) => {
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
                     let total = 0;
                     checks.forEach(c => {
-                        let price = c.getAttribute('data-price').replace(/\\./g, '');
+                        let price = c.getAttribute('data-price').replace(/\./g, '');
                         total += parseInt(price);
                     });
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
@@ -349,10 +345,9 @@ app.get('/admin', (req, res) => {
                 }
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
-                    document.getElementById('isiM').innerHTML = \`
-                        <div class="d-flex align-items-center mb-4"><img src="/uploads/\${d.berkas.foto}" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;"><div><h3 class="fw-bold text-success mb-0">\${d.nama}</h3><p class="text-muted small">\${d.jenjang}</p></div></div>
-                        <div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6><p class="small">NIK: \${d.nik}<br>Alamat: \${d.alamat}</p></div><div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">Ayah: \${d.namaAyah}<br>WA: \${d.whatsapp}</p></div></div>
-                    \`;
+                    document.getElementById('isiM').innerHTML = `
+                        <div class="d-flex align-items-center mb-4"><img src="/uploads/${d.berkas.foto}" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;"><div><h3 class="fw-bold text-success mb-0">${d.nama}</h3><p class="text-muted small">${d.jenjang}</p></div></div>
+                        <div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6><p class="small">NIK: ${d.nik}<br>Alamat: ${d.alamat}</p></div><div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">Ayah: ${d.namaAyah}<br>WA: ${d.whatsapp}</p></div></div>`;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
             </script>
