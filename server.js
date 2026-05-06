@@ -257,8 +257,8 @@ app.get('/admin', (req, res) => {
         if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
         if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR TAHUN INI</h5></div>';
 
-        // Mencegah error karakter kutip pada function parameter (seperti nama "sa'ad")
-        const safeNama = (p.nama || '').replace(/'/g, "\\'");
+        // PENGAMAN KHUSUS: Mengamankan tanda kutip di nama khusus untuk fungsi "onclick" tanpa merubah data asli
+        const safeNamaJS = (p.nama || '').replace(/'/g, "\\'");
 
         // --- TAMBAH DATA WA KE DALAM ONCLICK BUTTON ---
         return '<div class="bayar-row mb-4" data-name="'+p.nama.toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
@@ -270,7 +270,7 @@ app.get('/admin', (req, res) => {
                 '<div class="card-body p-3">'+bodyHTML+'</div>' +
                 '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
                     '<div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
-                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+safeNama+'\', \''+tahunAktif+'\', \''+(p.whatsapp || '')+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
+                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+safeNamaJS+'\', \''+tahunAktif+'\', \''+(p.whatsapp || '')+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
                 '</div>' +
             '</div>' +
         '</div>';
@@ -284,7 +284,7 @@ app.get('/admin', (req, res) => {
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
             
-            <!-- TAMBAHAN: Library html2pdf untuk PDF Cetak -->
+            <!-- TAMBAHAN: Library PDF Cetak -->
             <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
             <title>Panel Admin PSB</title>
@@ -350,7 +350,7 @@ app.get('/admin', (req, res) => {
             <!-- Modal Detail Santri -->
             <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
             
-            <!-- Modal Kwitansi (DIPERBESAR AGAR MUAT A5 & DIBUAT p-0 AGAR RAPI) -->
+            <!-- Modal Kwitansi (DIPERLEBAR modal-lg DAN DIBUAT p-0 AGAR COCOK UNTUK PDF) -->
             <div class="modal fade" id="mKwitansi" data-bs-backdrop="static" tabindex="-1">
                 <div class="modal-dialog modal-lg modal-dialog-centered">
                     <div class="modal-content border-0 rounded-4 overflow-hidden shadow-lg">
@@ -361,7 +361,7 @@ app.get('/admin', (req, res) => {
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
-                // FUNGSI PENCARIAN 100% TIDAK DIRUBAH (AMBIL DARI KODE ANDA)
+                // KODE SEARCH ANDA - TIDAK DISENTUH SAMA SEKALI
                 function filterT(c, q, strict) {
                     const rows = document.getElementsByClassName(c);
                     const query = q.toLowerCase().trim();
@@ -395,7 +395,7 @@ app.get('/admin', (req, res) => {
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
                 
-                // TAMBAHAN: FUNGSI UNDUH PDF
+                // FUNGSI UNDUH PDF (TAMBAHAN)
                 function downloadPDF(namaSantri) {
                     const el = document.getElementById('area-cetak-kwitansi');
                     const opt = {
@@ -408,7 +408,7 @@ app.get('/admin', (req, res) => {
                     html2pdf().set(opt).from(el).save();
                 }
 
-                // TAMBAHAN: MODAL KWITANSI & WA (DENGAN PEMISAH PONDOK/MAKAN)
+                // FUNGSI TAMPIL KWITANSI DENGAN DESAIN A5 & PESAN WA (TAMBAHAN)
                 function tampilkanKwitansi(nama, total, listPondok, listMakan, wa) {
                     let cleanWa = wa ? wa.replace(/^0/, '62') : '';
                     let pondokStr = listPondok.length > 0 ? listPondok.join(', ') : '-';
@@ -419,10 +419,9 @@ app.get('/admin', (req, res) => {
                     msg += '*Rincian:*%0A%E2%96%B8%20Bulanan%20Pondok%3A%20' + encodeURIComponent(pondokStr) + '%0A';
                     msg += '%E2%96%B8%20Uang%20Makan%3A%20' + encodeURIComponent(makanStr) + '%0A%0ATerima%20kasih.';
                     let waLink = 'https://wa.me/' + cleanWa + '?text=' + msg;
-                    
                     let tglSkrg = new Date().toLocaleString('id-ID');
 
-                    // Area Putih: Ini yang akan dipotret jadi PDF Kwitansi A5
+                    // Area untuk di-PDF-kan
                     var html = '<div id="area-cetak-kwitansi" style="padding: 30px; background: white; font-family: Arial, sans-serif; color: black;">';
                     html += '<div style="text-align: center; border-bottom: 3px double #1e4d2b; padding-bottom: 15px; margin-bottom: 20px;">';
                     html += '<h2 style="margin: 0; color: #1e4d2b; font-weight: bold; text-transform: uppercase;">KWITANSI PEMBAYARAN</h2>';
@@ -442,7 +441,7 @@ app.get('/admin', (req, res) => {
                     html += '<div style="margin-top: 40px; text-align: right; padding-right: 20px;"><p style="margin-bottom: 60px; color:#555;">Admin Keuangan,</p><p style="font-weight: bold; text-decoration: underline;">( .................................... )</p></div>';
                     html += '</div>';
                     
-                    // Area Abu-abu: Ini tombol aksi (Tidak ikut ke-download di PDF)
+                    // Area Tombol (Tidak ikut ke-PDF)
                     html += '<div class="p-4 bg-light border-top d-flex flex-column gap-2">';
                     html += '<button onclick="downloadPDF(\'' + nama.replace(/'/g, "\\'") + '\')" class="btn btn-danger fw-bold py-2 shadow-sm"><i class="fas fa-file-pdf me-2"></i> DOWNLOAD PDF (CETAK)</button>';
                     html += '<a href="' + waLink + '" target="_blank" class="btn btn-success fw-bold py-2 shadow-sm"><i class="fab fa-whatsapp me-2"></i> KIRIM WA KE ORANG TUA</a>';
@@ -454,7 +453,7 @@ app.get('/admin', (req, res) => {
                     kwitansiModal.show();
                 }
 
-                // DIMODIFIKASI SEDIKIT UNTUK MENGIRIM ARRAY PONDOK/MAKAN KE KWITANSI
+                // FUNGSI PROSES BAYAR YANG DISESUAIKAN UNTUK MEMISAH DATA PONDOK/MAKAN (TAMBAHAN)
                 function prosesBayar(id, nama, tahun, wa) {
                     const total = document.getElementById('total-' + id).innerText;
                     if(total === "0") return alert("Pilih bulan pembayaran!");
@@ -463,7 +462,6 @@ app.get('/admin', (req, res) => {
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
                     const itemIds = Array.from(checks).map(c => c.getAttribute('data-id'));
                     
-                    // Memisahkan list untuk dikirim ke fungsi tampilkanKwitansi
                     let listPondok = [];
                     let listMakan = [];
                     checks.forEach(c => {
@@ -480,7 +478,6 @@ app.get('/admin', (req, res) => {
                             body: JSON.stringify({ santriId: id, tahun: tahun, itemIds: itemIds })
                         }).then(res => res.json()).then(d => { 
                             if(d.success) { 
-                                // Panggil desain pop-up kwitansi PDF yang baru
                                 tampilkanKwitansi(nama, total, listPondok, listMakan, wa);
                             } 
                         });
