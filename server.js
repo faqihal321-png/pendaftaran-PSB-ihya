@@ -63,14 +63,31 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
         const data = readData();
         const config = readConfig();
         const getFileName = (n) => (req.files && req.files[n]) ? req.files[n][0].filename : null;
+        
+        // Membuat format Hari, Tanggal, Bulan, Tahun, Jam
+        const opsiWaktu = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        };
+        const waktuSkrg = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", ...opsiWaktu });
+
         const baru = {
             id: Date.now(),
             ...req.body,
             status: 'Aktif',
             tahunDaftar: config.tahunAktif,
             pembayaran: {},
-            berkas: { ktp: getFileName('ktp'), ijazah: getFileName('ijazah'), foto: getFileName('foto'), kk: getFileName('kk') },
-            tanggal: new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })
+            berkas: { 
+                ktp: getFileName('ktp'), 
+                ijazah: getFileName('ijazah'), 
+                foto: getFileName('foto'), 
+                kk: getFileName('kk') 
+            },
+            tanggal: waktuSkrg // Format: "Senin, 7 Mei 2026 00.00"
         };
         data.push(baru);
         saveData(data);
@@ -159,81 +176,80 @@ app.get('/admin', (req, res) => {
 
     const rowsSantri = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
-        const fotoUrl = p.berkas.foto ? `/uploads/${p.berkas.foto}` : 'https://via.placeholder.com/40x50';
-        const btnBerkas = (file, label, color) => file 
-            ? `<a href="/uploads/${file}" target="_blank" class="btn btn-xs ${color} fw-bold" style="font-size:0.65rem; padding:2px 5px;">${label}</a>` 
-            : `<button class="btn btn-xs btn-light disabled" style="font-size:0.65rem; padding:2px 5px;">${label}</button>`;
+        const fotoUrl = p.berkas.foto ? '/uploads/' + p.berkas.foto : 'https://via.placeholder.com/40x50';
+        
+        const btnB = (file, label, color) => {
+            if(!file) return '<button class="btn btn-xs btn-light disabled" style="font-size:0.65rem; padding:2px 5px;">'+label+'</button>';
+            return '<a href="/uploads/'+file+'" target="_blank" class="btn btn-xs '+color+' fw-bold" style="font-size:0.65rem; padding:2px 5px;">'+label+'</a>';
+        };
 
-        // --- Logika Bulan Lengkap ---
-        const tglPart = p.tanggal ? p.tanggal.split(',')[0].split('/') : [];
-        const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-        const labelDaftar = tglPart.length === 3 ? bulanIndo[parseInt(tglPart[1])-1] + ' ' + tglPart[2] : p.tahunDaftar;
-
-        return `
-            <tr class="santri-row" data-name="${p.nama.toLowerCase()}">
-                <td class="text-center small">${index + 1}</td>
-                <td class="text-center"><img src="${fotoUrl}" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>
-                <td><b>${p.nama}</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: ${labelDaftar}</small></td>
-                <td class="text-center small">${p.jenjang || '-'}</td>
-                <td><div class="d-flex flex-wrap gap-1">${btnBerkas(p.berkas.foto, 'FOTO', 'btn-primary')}${btnBerkas(p.berkas.ijazah, 'IJAZAH', 'btn-secondary')}${btnBerkas(p.berkas.kk, 'KK', 'btn-info text-white')}${btnBerkas(p.berkas.ktp, 'KTP', 'btn-warning')}</div></td>
-                <td><select class="form-select form-select-sm fw-bold" onchange="updateStatus(${p.id}, this.value)"><option value="Aktif" ${p.status === 'Aktif' ? 'selected' : ''}>🟢 Aktif</option><option value="Tidak Aktif" ${p.status === 'Tidak Aktif' ? 'selected' : ''}>🔴 Tidak Aktif</option></select></td>
-                <td><button class="btn btn-sm btn-success w-100 fw-bold shadow-sm" onclick="lihatDetail('${detailJson}')">DETAIL</button></td>
-            </tr>`;
+        return '<tr class="santri-row" data-name="'+p.nama.toLowerCase()+'">' +
+            '<td class="text-center small">'+(index + 1)+'</td>' +
+            '<td class="text-center"><img src="'+fotoUrl+'" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>' +
+            '<td><b>'+p.nama+'</b><br><small class="text-muted" style="font-size:0.7rem;">'+(p.tanggal || p.tahunDaftar)+'</small></td>' +
+            '<td class="text-center small">'+(p.jenjang || '-')+'</td>' +
+            '<td><div class="d-flex flex-wrap gap-1">' +
+                btnB(p.berkas.foto, 'FOTO', 'btn-primary') +
+                btnB(p.berkas.ijazah, 'IJAZAH', 'btn-secondary') +
+                btnB(p.berkas.kk, 'KK', 'btn-info text-white') +
+                btnB(p.berkas.ktp, 'KTP', 'btn-warning') +
+            '</div></td>' +
+            '<td><select class="form-select form-select-sm fw-bold" onchange="updateStatus('+p.id+', this.value)">' +
+                '<option value="Aktif" '+(p.status === 'Aktif' ? 'selected' : '')+'>🟢 Aktif</option>' +
+                '<option value="Tidak Aktif" '+(p.status === 'Tidak Aktif' ? 'selected' : '')+'>🔴 Tidak Aktif</option>' +
+            '</select></td>' +
+            '<td><button class="btn btn-sm btn-success w-100 fw-bold shadow-sm" onclick="lihatDetail(\''+detailJson+'\')">DETAIL</button></td>' +
+        '</tr>';
     }).join('');
 
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
         const tahunDaftarInt = parseInt(p.tahunDaftar || "2025");
         const tahunAktifInt = parseInt(tahunAktif);
-        const perluCekTunggakan = tahunAktifInt > tahunDaftarInt;
-        const bayarLalu = p.pembayaran[tahunLalu] || {};
-        const lunasLalu = months.every(m => bayarLalu['p-'+m] && bayarLalu['m-'+m]);
-        const isLocked = perluCekTunggakan && !lunasLalu;
+        const lunasLalu = months.every(m => (p.pembayaran[tahunLalu] || {})['p-'+m] && (p.pembayaran[tahunLalu] || {})['m-'+m]);
+        const isLocked = (tahunAktifInt > tahunDaftarInt) && !lunasLalu;
         const belumDaftar = tahunAktifInt < tahunDaftarInt;
         const isTidakAktif = p.status === 'Tidak Aktif';
 
         const createCheck = (prefix) => months.map(m => {
             const lunas = p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif][prefix + '-' + m];
-            return `
-            <div class="col-6 mb-2">
-                <div class="form-check p-1 border rounded ${lunas ? 'bg-light border-success' : 'bg-white shadow-sm'}">
-                    <input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="${prefix}-${p.id}-${m}" 
-                        data-id="${prefix}-${m}" data-price="${prefix === 'p' ? config.biayaPondok : config.biayaMakan}" 
-                        ${lunas ? 'checked disabled' : ''} onchange="hitungTotal(${p.id})">
-                    <label class="form-check-label fw-bold small ${lunas ? 'text-success' : ''}">${m}</label>
-                </div>
-            </div>`;
+            return '<div class="col-6 mb-2">' +
+                '<div class="form-check p-1 border rounded '+(lunas ? 'bg-light border-success' : 'bg-white shadow-sm')+'">' +
+                    '<input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="'+prefix+'-'+p.id+'-'+m+'" ' +
+                        'data-id="'+prefix+'-'+m+'" data-price="'+(prefix === 'p' ? config.biayaPondok : config.biayaMakan)+'" ' +
+                        (lunas ? 'checked disabled' : '')+' onchange="hitungTotal('+p.id+')">' +
+                    '<label class="form-check-label fw-bold small '+(lunas ? 'text-success' : '')+'">'+m+'</label>' +
+                '</div>' +
+            '</div>';
         }).join('');
 
-        let cardBodyContent = `
-            <div class="row g-3 ${isLocked ? 'pointer-events-none' : ''}">
-                <div class="col-md-6 border-end text-center">
-                    <p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok (Rp ${config.biayaPondok})</p>
-                    <div class="row gx-1">${createCheck('p')}</div>
-                </div>
-                <div class="col-md-6 text-center">
-                    <p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan (Rp ${config.biayaMakan})</p>
-                    <div class="row gx-1">${createCheck('m')}</div>
-                </div>
-            </div>`;
+        let bodyHTML = '<div class="row g-3 '+(isLocked ? 'pointer-events-none' : '')+'">' +
+            '<div class="col-md-6 border-end text-center">' +
+                '<p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok (Rp '+config.biayaPondok+')</p>' +
+                '<div class="row gx-1">'+createCheck('p')+'</div>' +
+            '</div>' +
+            '<div class="col-md-6 text-center">' +
+                '<p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan (Rp '+config.biayaMakan+')</p>' +
+                '<div class="row gx-1">'+createCheck('m')+'</div>' +
+            '</div>' +
+        '</div>';
 
-        if (isTidakAktif) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK ADA TAGIHAN KARENA TIDAK AKTIF</h5></div>`;
-        if (belumDaftar) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-muted fw-bold">SANTRI BELUM MENDAFTAR PADA TAHUN INI</h5></div>`;
+        if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
+        if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR</h5></div>';
 
-        return `
-            <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}" id="card-${p.id}" style="display: none;">
-                <div class="card border-0 shadow-sm rounded-4 ${isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : ''}">
-                    <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> ${p.nama} (${tahunAktif})</h6>
-                        ${isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+(p.tahunDaftar || '2025')+'</span>')}
-                    </div>
-                    <div class="card-body p-3">${cardBodyContent}</div>
-                    <div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">
-                        <div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-${p.id}">0</span></h4></div>
-                        <button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar(${p.id}, '${p.nama}', '${tahunAktif}')" ${isLocked || isTidakAktif || belumDaftar ? 'disabled' : ''}><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>
-                    </div>
-                </div>
-            </div>`;
+        return '<div class="bayar-row mb-4" data-name="'+p.nama.toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
+            '<div class="card border-0 shadow-sm rounded-4 '+(isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : '')+'">' +
+                '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
+                    '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+p.nama+' ('+tahunAktif+')</h6>' +
+                    (isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+(p.tahunDaftar || '2025')+'</span>')) +
+                '</div>' +
+                '<div class="card-body p-3">'+bodyHTML+'</div>' +
+                '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
+                    '<div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
+                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+', \''+p.nama+'\', \''+tahunAktif+'\')" '+(isLocked || isTidakAktif || belumDaftar ? 'disabled' : '')+'><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
     }).join('');
 
     res.send(`
@@ -287,7 +303,7 @@ app.get('/admin', (req, res) => {
                             <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran ${tahunAktif}</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
                             <div id="payment-container">
                                 <div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri untuk mengelola pembayaran.</h5></div>
-                                ${cardsBayar || '<div class="text-center p-5">Belum ada data santri.</div>'}
+                                ${cardsBayar}
                             </div>
                         </div>
                         <div class="tab-pane fade" id="v-set">
@@ -309,21 +325,16 @@ app.get('/admin', (req, res) => {
                     const rows = document.getElementsByClassName(c);
                     const query = q.toLowerCase().trim();
                     const hint = document.getElementById('hint-bayar');
-
                     if (strict) {
                         if (query === "") {
                             if(hint) hint.style.display = 'block';
                             for (let r of rows) r.style.display = 'none';
                         } else {
                             if(hint) hint.style.display = 'none';
-                            for (let r of rows) {
-                                r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
-                            }
+                            for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none'; }
                         }
                     } else {
-                        for (let r of rows) {
-                            r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
-                        }
+                        for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none'; }
                     }
                 }
                 function hitungTotal(id) {
@@ -361,17 +372,18 @@ app.get('/admin', (req, res) => {
                 }
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
-                    // --- Menggunakan Concatenation agar VS Code Aman ---
                     var html = '<div class="d-flex align-items-center mb-4">';
                     html += '<img src="/uploads/' + d.berkas.foto + '" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;">';
                     html += '<div><h3 class="fw-bold text-success mb-0">' + d.nama + '</h3><p class="text-muted small">' + d.jenjang + '</p></div></div>';
                     html += '<div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6>';
-                    html += '<p class="small">NIK: ' + d.nik + '<br>Alamat: ' + d.alamat + '</p></div>';
+                    html += '<p class="small"><b>NISN:</b> ' + (d.nisn || '-') + '<br>';
+                    html += '<b>NIK:</b> ' + (d.nik || '-') + '<br>';
+                    html += '<b>Tgl Daftar:</b> ' + (d.tanggal || '-') + '<br>';
+                    html += '<b>Alamat:</b> ' + d.alamat + '</p></div>';
                     html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">';
-                    html += 'Ayah: ' + d.namaAyah + ' (' + (d.pekerjaanAyah || '-') + ')<br>';
-                    html += 'Ibu: ' + (d.namaIbu || '-') + ' (' + (d.pekerjaanIbu || '-') + ')<br>';
-                    html += 'WA: ' + d.whatsapp + '</p></div></div>';
-                    
+                    html += '<b>Ayah:</b> ' + d.namaAyah + ' (' + (d.pekerjaanAyah || '-') + ')<br>';
+                    html += '<b>Ibu:</b> ' + (d.namaIbu || '-') + ' (' + (d.pekerjaanIbu || '-') + ')<br>';
+                    html += '<b>WA:</b> ' + d.whatsapp + '</p></div></div>';
                     document.getElementById('isiM').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
