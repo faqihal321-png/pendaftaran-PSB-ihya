@@ -257,6 +257,7 @@ app.get('/admin', (req, res) => {
         if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
         if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR TAHUN INI</h5></div>';
 
+        // TAMBAHKAN PEMANGGILAN WA DI ONCLICK BUTTON
         return '<div class="bayar-row mb-4" data-name="'+p.nama.toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
             '<div class="card border-0 shadow-sm rounded-4 '+(isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : '')+'">' +
                 '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
@@ -279,9 +280,7 @@ app.get('/admin', (req, res) => {
             <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-            <!-- TAMBAHAN: Library html2pdf untuk PDF Cetak -->
             <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-            
             <title>Panel Admin PSB</title>
             <style>
                 body { background-color: #f4f7f6; font-family: sans-serif; }
@@ -342,10 +341,8 @@ app.get('/admin', (req, res) => {
                 </div>
             </div>
             
-            <!-- Modal Detail Santri -->
             <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
             
-            <!-- Modal Kwitansi -->
             <div class="modal fade" id="mKwitansi" data-bs-backdrop="static" tabindex="-1">
                 <div class="modal-dialog modal-lg modal-dialog-centered">
                     <div class="modal-content border-0 rounded-4 overflow-hidden shadow-lg">
@@ -356,6 +353,7 @@ app.get('/admin', (req, res) => {
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
+                // FUNGSI PENCARIAN (SEARCH) YANG SUDAH TERVERIFIKASI
                 function filterT(c, q, strict) {
                     const rows = document.getElementsByClassName(c);
                     const query = q.toLowerCase().trim();
@@ -367,10 +365,14 @@ app.get('/admin', (req, res) => {
                             for (let r of rows) r.style.display = 'none';
                         } else {
                             if(hint) hint.style.display = 'none';
-                            for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none'; }
+                            for (let r of rows) {
+                                r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
+                            }
                         }
                     } else {
-                        for (let r of rows) { r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none'; }
+                        for (let r of rows) {
+                            r.style.display = r.getAttribute('data-name').includes(query) ? '' : 'none';
+                        }
                     }
                 }
                 
@@ -385,7 +387,7 @@ app.get('/admin', (req, res) => {
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
                 
-                // Fungsi untuk membuat PDF dari elemen HTML
+                // FUNGSI DOWNLOAD PDF MENGGUNAKAN HTML2PDF
                 function downloadPDF(namaSantri) {
                     const el = document.getElementById('area-cetak-kwitansi');
                     const opt = {
@@ -398,8 +400,9 @@ app.get('/admin', (req, res) => {
                     html2pdf().set(opt).from(el).save();
                 }
 
+                // FUNGSI TAMPILKAN POP-UP KWITANSI & WA
                 function tampilkanKwitansi(nama, total, listPondok, listMakan, wa) {
-                    let cleanWa = wa.replace(/^0/, '62');
+                    let cleanWa = wa ? wa.replace(/^0/, '62') : '';
                     
                     let pondokStr = listPondok.length > 0 ? listPondok.join(', ') : '-';
                     let makanStr = listMakan.length > 0 ? listMakan.join(', ') : '-';
@@ -412,7 +415,7 @@ app.get('/admin', (req, res) => {
                     
                     let tglSkrg = new Date().toLocaleString('id-ID');
 
-                    // --- AREA YANG AKAN DIJADIKAN PDF ---
+                    // --- AREA YANG AKAN DIJADIKAN PDF (A5 LANDSCAPE) ---
                     var html = '<div id="area-cetak-kwitansi" style="padding: 30px; background: white; font-family: Arial, sans-serif; color: black;">';
                     html += '<div style="text-align: center; border-bottom: 3px double #1e4d2b; padding-bottom: 15px; margin-bottom: 20px;">';
                     html += '<h2 style="margin: 0; color: #1e4d2b; font-weight: bold; text-transform: uppercase;">KWITANSI PEMBAYARAN</h2>';
@@ -430,9 +433,9 @@ app.get('/admin', (req, res) => {
                     html += '<tr><td style="padding: 10px 0; color: #555;">Tanggal</td><td style="padding: 10px 0;">: ' + tglSkrg + '</td></tr>';
                     html += '</table>';
                     html += '<div style="margin-top: 40px; text-align: right; padding-right: 20px;"><p style="margin-bottom: 60px; color:#555;">Admin Keuangan,</p><p style="font-weight: bold; text-decoration: underline;">( .................................... )</p></div>';
-                    html += '</div>'; // End area cetak
+                    html += '</div>'; // Tutup area cetak
                     
-                    // --- AREA TOMBOL AKSI (TIDAK MASUK PDF) ---
+                    // --- AREA TOMBOL AKSI BAWAH ---
                     html += '<div class="p-4 bg-light border-top d-flex flex-column gap-2">';
                     html += '<button onclick="downloadPDF(\'' + nama + '\')" class="btn btn-danger fw-bold py-2 shadow-sm"><i class="fas fa-file-pdf me-2"></i> DOWNLOAD PDF (CETAK)</button>';
                     html += '<a href="' + waLink + '" target="_blank" class="btn btn-success fw-bold py-2 shadow-sm"><i class="fab fa-whatsapp me-2"></i> KIRIM WA KE ORANG TUA</a>';
@@ -443,6 +446,7 @@ app.get('/admin', (req, res) => {
                     new bootstrap.Modal(document.getElementById('mKwitansi')).show();
                 }
 
+                // FUNGSI MEMPROSES BAYAR & MENGELOMPOKKAN BULAN PONDOK/MAKAN
                 function prosesBayar(id, nama, tahun, wa) {
                     const total = document.getElementById('total-' + id).innerText;
                     if(total === "0") return alert("Pilih bulan pembayaran!");
@@ -451,14 +455,16 @@ app.get('/admin', (req, res) => {
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
                     const itemIds = Array.from(checks).map(c => c.getAttribute('data-id'));
                     
-                    // Pisahkan rincian Pondok dan Makan
                     let listPondok = [];
                     let listMakan = [];
                     checks.forEach(c => {
                         let isPondok = c.id.startsWith('p-');
                         let textBulan = c.nextElementSibling.innerText;
-                        if(isPondok) listPondok.push(textBulan);
-                        else listMakan.push(textBulan);
+                        if(isPondok) {
+                            listPondok.push(textBulan);
+                        } else {
+                            listMakan.push(textBulan);
+                        }
                     });
 
                     if(confirm("Konfirmasi bayar Rp " + total + " untuk " + nama + "?")) {
@@ -467,7 +473,10 @@ app.get('/admin', (req, res) => {
                             headers: {'Content-Type': 'application/json'},
                             body: JSON.stringify({ santriId: id, tahun: tahun, itemIds: itemIds })
                         }).then(res => res.json()).then(d => { 
-                            if(d.success) tampilkanKwitansi(nama, total, listPondok, listMakan, wa);
+                            if(d.success) {
+                                // Panggil kwitansi pop-up
+                                tampilkanKwitansi(nama, total, listPondok, listMakan, wa);
+                            }
                         });
                     }
                 }
@@ -497,6 +506,7 @@ app.get('/admin', (req, res) => {
                     html += '<b>Ayah:</b> ' + d.namaAyah + ' (' + (d.pekerjaanAyah || '-') + ')<br>';
                     html += '<b>Ibu:</b> ' + (d.namaIbu || '-') + ' (' + (d.pekerjaanIbu || '-') + ')<br>';
                     html += '<b>WA:</b> ' + d.whatsapp + '</p></div></div>';
+                    
                     document.getElementById('isiM').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
