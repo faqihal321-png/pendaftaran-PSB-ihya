@@ -76,7 +76,6 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
     } catch (e) { res.status(500).send("Error: " + e.message); }
 });
 
-// API Simpan Pembayaran Permanen
 app.post('/admin/konfirmasi-bayar', (req, res) => {
     if (!req.session.isLoggedIn) return res.status(403).json({ success: false });
     const { santriId, tahun, itemIds } = req.body;
@@ -156,7 +155,7 @@ app.get('/admin', (req, res) => {
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
     const santriMA = data.filter(p => p.jenjang === 'MA').length;
 
-    // --- TABEL DATA SANTRI LENGKAP ---
+    // --- TABEL DATA SANTRI ---
     const rowsSantri = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/"/g, '&quot;');
         const fotoUrl = p.berkas.foto ? `/uploads/${p.berkas.foto}` : 'https://via.placeholder.com/40x50';
@@ -177,14 +176,15 @@ app.get('/admin', (req, res) => {
         `;
     }).join('');
 
-    // --- CARDS PEMBAYARAN DENGAN LOGIKA LOCK & SEQUENTIAL ---
+    // --- CARDS PEMBAYARAN (DENGAN PESAN TIDAK AKTIF) ---
     const cardsBayar = data.map((p) => {
         const months = ['Juli', 'Agt', 'Sept', 'Okt', 'Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
         
-        // Cek tunggakan tahun lalu
+        // Pengecekan Tunggakan
         const bayarLalu = p.pembayaran[tahunLalu] || {};
         const lunasLalu = months.every(m => bayarLalu['p-'+m] && bayarLalu['m-'+m]);
-        const isLocked = !lunasLalu && tahunAktif !== "2025"; // Anggap 2025 tahun awal
+        const isLocked = !lunasLalu && tahunAktif !== "2025";
+        const isTidakAktif = p.status === 'Tidak Aktif';
 
         const createCheck = (prefix) => months.map(m => {
             const lunas = p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif][prefix + '-' + m];
@@ -194,29 +194,34 @@ app.get('/admin', (req, res) => {
                     <input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="${prefix}-${p.id}-${m}" 
                         data-id="${prefix}-${m}" data-price="${prefix === 'p' ? config.biayaPondok : config.biayaMakan}" 
                         ${lunas ? 'checked disabled' : ''} onchange="hitungTotal(${p.id})">
-                    <label class="form-check-label fw-bold small ${lunas ? 'text-success' : ''}" for="${prefix}-${p.id}-${m}">${m}</label>
+                    <label class="form-check-label fw-bold small ${lunas ? 'text-success' : ''}">${m}</label>
                 </div>
             </div>`;
         }).join('');
 
+        // Konten utama kartu: Jika tidak aktif tampilkan pesan, jika aktif tampilkan checklist
+        const cardBody = isTidakAktif 
+            ? `<div class="py-5 text-center"><h5 class="text-danger fw-bold"><i class="fas fa-exclamation-triangle me-2"></i> SANTRI TIDAK ADA TAGIHAN KARENA TIDAK AKTIF</h5></div>`
+            : `<div class="row g-3 ${isLocked ? 'pointer-events-none' : ''}">
+                <div class="col-md-6 border-end text-center">
+                    <p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok (Rp ${config.biayaPondok})</p>
+                    <div class="row gx-1">${createCheck('p')}</div>
+                </div>
+                <div class="col-md-6 text-center">
+                    <p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan (Rp ${config.biayaMakan})</p>
+                    <div class="row gx-1">${createCheck('m')}</div>
+                </div>
+               </div>`;
+
         return `
             <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}" id="card-${p.id}">
-                <div class="card border-0 shadow-sm rounded-4 ${isLocked ? 'opacity-75' : ''}">
+                <div class="card border-0 shadow-sm rounded-4 ${isLocked || isTidakAktif ? 'opacity-75' : ''}">
                     <div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">
                         <h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> ${p.nama} (${tahunAktif})</h6>
-                        ${isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI TUNGGAKAN '+tahunLalu+' DULU!</span>' : '<span class="badge bg-white text-success small">'+p.jenjang+'</span>'}
+                        ${isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">'+p.jenjang+'</span>')}
                     </div>
                     <div class="card-body p-3">
-                        <div class="row g-3 ${isLocked ? 'pointer-events-none' : ''}">
-                            <div class="col-md-6 border-end text-center">
-                                <p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok (Rp ${config.biayaPondok})</p>
-                                <div class="row gx-1">${createCheck('p')}</div>
-                            </div>
-                            <div class="col-md-6 text-center">
-                                <p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan (Rp ${config.biayaMakan})</p>
-                                <div class="row gx-1">${createCheck('m')}</div>
-                            </div>
-                        </div>
+                        ${cardBody}
                     </div>
                     <div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">
                         <div>
@@ -224,7 +229,7 @@ app.get('/admin', (req, res) => {
                             <h4 class="text-success fw-bold mb-0">Rp <span id="total-${p.id}">0</span></h4>
                         </div>
                         <button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" 
-                            onclick="prosesBayar(${p.id}, '${p.nama}', '${tahunAktif}')" ${isLocked ? 'disabled' : ''}>
+                            onclick="prosesBayar(${p.id}, '${p.nama}', '${tahunAktif}')" ${isLocked || isTidakAktif ? 'disabled' : ''}>
                             <i class="fas fa-money-check-alt me-2"></i> KONFIRMASI BAYAR
                         </button>
                     </div>
@@ -268,11 +273,11 @@ app.get('/admin', (req, res) => {
                     <div class="tab-content">
                         <!-- DASHBOARD -->
                         <div class="tab-pane fade show active" id="v-dash">
-                            <h3 class="fw-bold text-success mb-4">Dashboard</h3>
+                            <h3 class="fw-bold text-success mb-4 text-uppercase">Dashboard</h3>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-4"><div class="card stat-card bg-success p-3"><h6>Aktif</h6><h2>${santriAktif}</h2></div></div>
                                 <div class="col-md-4"><div class="card stat-card bg-danger p-3"><h6>Tidak Aktif</h6><h2>${santriTidakAktif}</h2></div></div>
-                                <div class="col-md-4"><div class="card stat-card bg-primary p-3"><h6>Total</h6><h2>${data.length}</h2></div></div>
+                                <div class="col-md-4"><div class="card stat-card bg-primary p-3"><h6>Total Santri</h6><h2>${data.length}</h2></div></div>
                                 <div class="col-md-6"><div class="card stat-card bg-info p-4"><h5>MTs</h5><h1>${santriMTs}</h1></div></div>
                                 <div class="col-md-6"><div class="card stat-card bg-warning text-dark p-4"><h5>MA</h5><h1>${santriMA}</h1></div></div>
                             </div>
@@ -291,7 +296,7 @@ app.get('/admin', (req, res) => {
 
                         <!-- PEMBAYARAN -->
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success">CEKLIS PEMBAYARAN ${tahunAktif}</h4><input class="form-control w-25 search-box shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)"></div>
+                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">CEKLIS PEMBAYARAN ${tahunAktif}</h4><input class="form-control w-25 search-box shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value)"></div>
                             <div id="payment-container">${cardsBayar || '<div class="text-center p-5">Belum ada data.</div>'}</div>
                         </div>
 
@@ -331,7 +336,7 @@ app.get('/admin', (req, res) => {
 
                 function prosesBayar(id, nama, tahun) {
                     const total = document.getElementById('total-' + id).innerText;
-                    if(total === "0") return alert("Pilih bulan pendaftaran!");
+                    if(total === "0") return alert("Pilih bulan pembayaran!");
                     
                     const card = document.getElementById('card-' + id);
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
