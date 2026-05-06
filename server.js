@@ -76,13 +76,7 @@ app.post('/daftar', upload.fields([
         };
         data.push(baru);
         saveData(data);
-        res.send(`
-            <div style="text-align:center; font-family:sans-serif; margin-top:100px; color:#1e4d2b;">
-                <h2>✅ Pendaftaran Berhasil!</h2>
-                <p>Data santri telah disimpan secara permanen.</p>
-                <a href="/" style="text-decoration:none; background:#1e4d2b; color:white; padding:10px 20px; border-radius:5px;">Kembali</a>
-            </div>
-        `);
+        res.send(`<h2>✅ Pendaftaran Berhasil!</h2><a href="/">Kembali</a>`);
     } catch (e) { res.status(500).send("Error: " + e.message); }
 });
 
@@ -114,46 +108,21 @@ app.get('/login', (req, res) => {
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
             <title>Login Admin PSB</title>
             <style>
-                body {
-                    background: linear-gradient(135deg, #1e4d2b 0%, #2e7d32 100%);
-                    height: 100vh; display: flex; align-items: center; justify-content: center;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0;
-                }
-                .login-card {
-                    background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 25px;
-                    box-shadow: 0 20px 40px rgba(0,0,0,0.3); width: 100%; max-width: 400px;
-                    backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);
-                }
-                .login-icon {
-                    background: #1e4d2b; width: 80px; height: 80px; display: flex;
-                    align-items: center; justify-content: center; border-radius: 50%;
-                    margin: 0 auto 20px; color: white; box-shadow: 0 10px 20px rgba(30, 77, 43, 0.3);
-                }
-                .btn-login {
-                    background: #1e4d2b; color: white; border: none; padding: 12px;
-                    border-radius: 12px; font-weight: bold; width: 100%; transition: 0.3s;
-                }
-                .btn-login:hover { background: #2e7d32; color: white; transform: translateY(-3px); }
-                .input-group-text { background: #f8f9fa; border-right: none; border-radius: 12px 0 0 12px; }
-                .form-control { border-left: none; border-radius: 0 12px 12px 0; padding: 12px; }
+                body { background: linear-gradient(135deg, #1e4d2b 0%, #2e7d32 100%); height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; font-family: sans-serif; }
+                .login-card { background: rgba(255, 255, 255, 0.95); padding: 40px; border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); width: 100%; max-width: 400px; backdrop-filter: blur(10px); }
+                .btn-login { background: #1e4d2b; color: white; border-radius: 12px; width: 100%; padding: 12px; font-weight: bold; border: none; }
+                .btn-login:hover { background: #2e7d32; transform: translateY(-2px); transition: 0.3s; }
             </style>
         </head>
         <body>
             <div class="login-card text-center">
-                <div class="login-icon"><i class="fas fa-user-shield fa-2x"></i></div>
-                <h3 class="fw-bold text-dark mb-1">Panel Admin</h3>
-                <p class="text-muted small mb-4">Pendaftaran Santri Baru 2026</p>
+                <div class="mb-4 text-success"><i class="fas fa-user-shield fa-4x"></i></div>
+                <h3 class="fw-bold mb-4">Panel Admin PSB</h3>
                 <form action="/login" method="POST">
-                    <div class="input-group mb-3">
-                        <span class="input-group-text"><i class="fas fa-user text-muted"></i></span>
-                        <input name="user" type="text" class="form-control" placeholder="Username" required>
-                    </div>
-                    <div class="input-group mb-4">
-                        <span class="input-group-text"><i class="fas fa-lock text-muted"></i></span>
-                        <input name="pass" type="password" class="form-control" placeholder="Password" required>
-                    </div>
-                    <button type="submit" class="btn btn-login mb-3">MASUK SEKARANG</button>
-                    <div><a href="/" class="text-decoration-none small text-muted fw-bold"><i class="fas fa-arrow-left me-1"></i> Kembali ke Beranda</a></div>
+                    <input name="user" type="text" class="form-control mb-3" placeholder="Username" required>
+                    <input name="pass" type="password" class="form-control mb-4" placeholder="Password" required>
+                    <button type="submit" class="btn btn-login mb-3">MASUK</button>
+                    <a href="/" class="d-block text-muted small text-decoration-none">Kembali ke Beranda</a>
                 </form>
             </div>
         </body>
@@ -169,14 +138,13 @@ app.post('/login', (req, res) => {
 });
 
 /**
- * --- ADMIN DASHBOARD ---
+ * --- ADMIN DASHBOARD (SIDEBAR & TABS) ---
  */
 
 app.get('/admin', (req, res) => {
     if (!req.session.isLoggedIn) return res.redirect('/login');
     const data = readData();
     
-    // Perhitungan Statistik
     const totalSantri = data.length;
     const santriAktif = data.filter(p => p.status === 'Aktif').length;
     const santriTidakAktif = data.filter(p => p.status === 'Tidak Aktif').length;
@@ -224,12 +192,11 @@ app.get('/admin', (req, res) => {
             <title>Panel Admin PSB</title>
             <style>
                 body { background-color: #f4f7f6; font-family: sans-serif; overflow-x: hidden; }
-                .sidebar { min-width: 240px; background: #1e4d2b; min-height: 100vh; color: white; }
-                .sidebar .nav-link { color: rgba(255,255,255,0.7); margin: 5px 15px; border-radius: 10px; }
-                .sidebar .nav-link.active { background: rgba(255,255,255,0.1); color: white; }
-                .main-content { width: 100%; padding: 25px; }
-                .stat-card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: 0.3s; }
-                .stat-card:hover { transform: translateY(-5px); }
+                .sidebar { min-width: 250px; background: #1e4d2b; min-height: 100vh; color: white; position: sticky; top: 0; }
+                .sidebar .nav-link { color: rgba(255,255,255,0.7); margin: 5px 15px; border-radius: 10px; text-align: left; border: none; background: none; width: 88%; }
+                .sidebar .nav-link:hover, .sidebar .nav-link.active { background: rgba(255,255,255,0.1) !important; color: white !important; }
+                .main-content { width: 100%; padding: 30px; }
+                .stat-card { border: none; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
                 .main-card { border: none; border-radius: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.05); background: white; }
                 .table thead { background-color: #1e4d2b; color: white; }
             </style>
@@ -239,42 +206,87 @@ app.get('/admin', (req, res) => {
                 <nav class="sidebar shadow-lg">
                     <div class="p-4 text-center"><h4 class="fw-bold mb-0">ADMIN PSB</h4><p class="small opacity-50">Panel Manajemen</p></div>
                     <div class="nav flex-column nav-pills">
-                        <button class="nav-link active text-start border-0 mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-chart-line me-2"></i> Dashboard</button>
-                        <button class="nav-link text-start border-0 mb-2" data-bs-toggle="pill" data-bs-target="#v-santri"><i class="fas fa-users me-2"></i> Data Santri</button>
+                        <button class="nav-link active mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-chart-line me-2"></i> Dashboard</button>
+                        <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-santri"><i class="fas fa-users me-2"></i> Data Santri</button>
+                        <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-bayar"><i class="fas fa-credit-card me-2"></i> Pembayaran</button>
+                        <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-set"><i class="fas fa-cog me-2"></i> Setting</button>
                         <hr class="mx-3">
-                        <a href="/logout" class="nav-link text-start text-danger mt-3"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
+                        <a href="/logout" class="nav-link text-danger mt-2"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
                     </div>
                 </nav>
 
                 <div class="main-content">
                     <div class="tab-content">
-                        <!-- TAB DASHBOARD (5 KOTAK) -->
+                        <!-- TAB DASHBOARD -->
                         <div class="tab-pane fade show active" id="v-dash">
                             <h3 class="fw-bold text-success mb-4">Ringkasan Dashboard</h3>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-4"><div class="card stat-card bg-success text-white p-3"><h6>Aktif</h6><h2>${santriAktif}</h2></div></div>
-                                <div class="col-md-4"><div class="col-md-12 mb-3"><div class="card stat-card bg-danger text-white p-3"><h6>Tidak Aktif</h6><h2>${santriTidakAktif}</h2></div></div></div>
-                                <div class="col-md-4"><div class="card stat-card bg-primary text-white p-3"><h6>Total Keseluruhan</h6><h2>${totalSantri}</h2></div></div>
-                            </div>
-                            <div class="row g-3">
-                                <div class="col-md-6"><div class="card stat-card bg-info text-white p-4"><h5><i class="fas fa-school me-2"></i>Santri MTs</h5><h1 class="fw-bold">${santriMTs}</h1></div></div>
-                                <div class="col-md-6"><div class="card stat-card bg-warning text-dark p-4"><h5><i class="fas fa-graduation-cap me-2"></i>Santri MA</h5><h1 class="fw-bold">${santriMA}</h1></div></div>
+                                <div class="col-md-4"><div class="card stat-card bg-danger text-white p-3"><h6>Tidak Aktif</h6><h2>${santriTidakAktif}</h2></div></div>
+                                <div class="col-md-4"><div class="card stat-card bg-primary text-white p-3"><h6>Total Santri</h6><h2>${totalSantri}</h2></div></div>
+                                <div class="col-md-6"><div class="card stat-card bg-info text-white p-4"><h5>MTs</h5><h1 class="fw-bold">${santriMTs}</h1></div></div>
+                                <div class="col-md-6"><div class="card stat-card bg-warning text-dark p-4"><h5>MA</h5><h1 class="fw-bold">${santriMA}</h1></div></div>
                             </div>
                         </div>
 
                         <!-- TAB DATA SANTRI -->
                         <div class="tab-pane fade" id="v-santri">
-                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-                                <h4 class="fw-bold text-success mb-0">Manajemen Data Santri</h4>
-                                <a href="/admin/export" class="btn btn-success rounded-pill shadow-sm"><i class="fas fa-file-excel me-1"></i> EXCEL</a>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="fw-bold text-success">Manajemen Data Santri</h4>
+                                <a href="/admin/export" class="btn btn-success shadow-sm rounded-pill px-4">Export Excel</a>
                             </div>
                             <div class="card main-card p-3">
                                 <div class="table-responsive">
                                     <table class="table table-hover align-middle" style="font-size:0.85rem;">
-                                        <thead><tr class="text-center"><th>No</th><th>Foto</th><th>Nama Lengkap</th><th>Jenjang</th><th>Berkas & Status</th><th>Aksi</th></tr></thead>
-                                        <tbody>${rows || '<tr><td colspan="6" class="text-center py-4">Kosong</td></tr>'}</tbody>
+                                        <thead><tr class="text-center"><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Status</th><th>Aksi</th></tr></thead>
+                                        <tbody>${rows || '<tr><td colspan="6" class="text-center py-4 text-muted">Belum ada data masuk.</td></tr>'}</tbody>
                                     </table>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB PEMBAYARAN -->
+                        <div class="tab-pane fade" id="v-bayar">
+                            <h4 class="fw-bold text-success mb-4">Log Pembayaran Santri</h4>
+                            <div class="card main-card p-4">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Nama Santri</th>
+                                                <th>Kategori</th>
+                                                <th>Nominal (Rp)</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Contoh Santri</td>
+                                                <td>Pendaftaran</td>
+                                                <td>Rp 250.000</td>
+                                                <td><span class="badge bg-success">Lunas</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB SETTING -->
+                        <div class="tab-pane fade" id="v-set">
+                            <h4 class="fw-bold text-success mb-4">Pengaturan Sistem</h4>
+                            <div class="card main-card p-4">
+                                <form>
+                                    <div class="mb-3">
+                                        <label class="form-label">Nama Pondok</label>
+                                        <input type="text" class="form-control" value="Pondok Pesantren Ihya">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Tahun Ajaran</label>
+                                        <input type="text" class="form-control" value="2026/2027">
+                                    </div>
+                                    <button type="button" class="btn btn-success px-4">Simpan Perubahan</button>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -313,13 +325,13 @@ app.get('/admin', (req, res) => {
                         <hr>
                         <div class="row g-3 mt-2">
                             <div class="col-md-6 border-end">
-                                <h6 class="text-success fw-bold border-bottom pb-2">DATA PRIBADI</h6>
+                                <h6 class="text-success fw-bold border-bottom pb-2 text-uppercase">Data Pribadi</h6>
                                 <p class="mb-1 small">NISN: <b>\${d.nisn || '-'}</b></p>
                                 <p class="mb-1 small">NIK: <b>\${d.nik || '-'}</b></p>
                                 <p class="mb-1 small">Alamat: <br><b>\${d.alamat || '-'}</b></p>
                             </div>
                             <div class="col-md-6 ps-md-4">
-                                <h6 class="text-success fw-bold border-bottom pb-2">DATA ORANG TUA</h6>
+                                <h6 class="text-success fw-bold border-bottom pb-2 text-uppercase">Data Orang Tua</h6>
                                 <p class="mb-1 small">Ayah: <b>\${d.namaAyah || '-'}</b></p>
                                 <p class="mb-1 small">Ibu: <b>\${d.namaIbu || '-'}</b></p>
                                 <p class="mb-1 small">WhatsApp: <b>\${d.whatsapp || '-'}</b></p>
@@ -338,16 +350,14 @@ app.get('/admin/export', async (req, res) => {
     if (!req.session.isLoggedIn) return res.status(403).send("Akses Ditolak");
     const data = readData();
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Pendaftar');
+    const sheet = workbook.addWorksheet('Data');
     sheet.columns = [
-        { header: 'Status', key: 'status', width: 15 },
         { header: 'Nama', key: 'nama', width: 30 },
-        { header: 'WA', key: 'whatsapp', width: 20 },
-        { header: 'Jenjang', key: 'jenjang', width: 15 }
+        { header: 'Status', key: 'status', width: 15 }
     ];
     data.forEach(p => sheet.addRow(p));
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=Data_PSB_2026.xlsx');
+    res.setHeader('Content-Disposition', 'attachment; filename=Data_Lengkap.xlsx');
     await workbook.xlsx.write(res);
     res.end();
 });
