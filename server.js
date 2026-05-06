@@ -167,10 +167,20 @@ app.get('/admin', (req, res) => {
             return '<a href="/uploads/'+file+'" target="_blank" class="btn btn-xs '+color+' fw-bold" style="font-size:0.65rem; padding:2px 5px;">'+label+'</a>';
         };
 
+        // MEMULIHKAN LOGIKA TANGGAL PENDAFTARAN
+        let labelDaftar = p.tahunDaftar || '2025';
+        if (p.tanggal) {
+            const tglPart = p.tanggal.split(',')[0].split('/');
+            if (tglPart.length === 3) {
+                const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                labelDaftar = bulanIndo[parseInt(tglPart[1])-1] + ' ' + tglPart[2];
+            } else { labelDaftar = p.tanggal; }
+        }
+
         return '<tr class="santri-row" data-name="'+(p.nama || '').toLowerCase()+'">' +
             '<td class="text-center small">'+(index + 1)+'</td>' +
             '<td class="text-center"><img src="'+fotoUrl+'" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>' +
-            '<td><b>'+p.nama+'</b></td>' +
+            '<td><b>'+p.nama+'</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: '+labelDaftar+'</small></td>' +
             '<td class="text-center small">'+(p.jenjang || '-')+'</td>' +
             '<td><div class="d-flex flex-wrap gap-1">' +
                 btnB(p.berkas.foto, 'FOTO', 'btn-primary') +
@@ -236,7 +246,7 @@ app.get('/admin', (req, res) => {
         <body>
             <div class="d-flex">
                 <nav class="sidebar shadow">
-                    <div class="p-4 text-center border-bottom mb-3"><h4 class="fw-bold">ADMIN PSB</h4></div>
+                    <div class="p-4 text-center border-bottom border-white border-opacity-10 mb-3"><h4 class="fw-bold">ADMIN PSB</h4></div>
                     <div class="nav flex-column nav-pills">
                         <button class="nav-link active mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-th-large me-2"></i> Dashboard</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-santri"><i class="fas fa-users me-2"></i> Data Santri</button>
@@ -248,38 +258,41 @@ app.get('/admin', (req, res) => {
                 <div class="main-content">
                     <div class="tab-content">
                         <div class="tab-pane fade show active" id="v-dash">
+                            <h3 class="fw-bold text-success mb-4 text-uppercase">Dashboard</h3>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-4"><div class="card stat-card bg-success p-3"><h6>Aktif</h6><h2>${santriAktif}</h2></div></div>
                                 <div class="col-md-4"><div class="card stat-card bg-danger p-3"><h6>Tidak Aktif</h6><h2>${santriTidakAktif}</h2></div></div>
-                                <div class="col-md-4"><div class="card stat-card bg-primary p-3"><h6>Total</h6><h2>${data.length}</h2></div></div>
+                                <div class="col-md-4"><div class="card stat-card bg-primary p-3"><h6>Total Santri</h6><h2>${data.length}</h2></div></div>
+                                <div class="col-md-6"><div class="card stat-card bg-info p-4"><h5>MTs</h5><h1>${santriMTs}</h1></div></div>
+                                <div class="col-md-6"><div class="card stat-card bg-warning text-dark p-4"><h5>MA</h5><h1>${santriMA}</h1></div></div>
                             </div>
                         </div>
                         <div class="tab-pane fade" id="v-santri">
-                            <div class="d-flex justify-content-between mb-3"><h4 class="fw-bold">Data Santri</h4><input class="form-control w-25" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value, false)"></div>
-                            <div class="card p-3 rounded-4 bg-white table-responsive"><table class="table align-middle"><thead><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri}</tbody></table></div>
+                            <div class="d-flex justify-content-between mb-3 align-items-center"><h4 class="fw-bold text-success text-uppercase">Data Santri</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value, false)"></div>
+                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div>
                         </div>
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4"><h4 class="fw-bold">Ceklis Pembayaran ${tahunAktif}</h4><input class="form-control w-25" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
-                            <div id="payment-container"><div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Cari nama santri...</h5></div>${cardsBayar}</div>
+                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran ${tahunAktif}</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
+                            <div id="payment-container"><div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri untuk mengelola pembayaran.</h5></div>${cardsBayar}</div>
                         </div>
                         <div class="tab-pane fade" id="v-set">
-                            <div class="card p-4 rounded-4 bg-white" style="max-width: 400px;">
-                                <div class="mb-3"><label class="form-label">Tahun Ajaran</label><input id="cfgT" class="form-control" value="${tahunAktif}"></div>
-                                <div class="mb-3"><label class="form-label">Pondok</label><input id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
-                                <div class="mb-3"><label class="form-label">Makan</label><input id="cfgM" class="form-control" value="${config.biayaMakan}"></div>
-                                <button class="btn btn-success w-100" onclick="simpanC()">SIMPAN</button>
+                            <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4>
+                            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;">
+                                <div class="mb-3"><label class="form-label fw-bold small">Tahun Ajaran Aktif</label><input id="cfgT" class="form-control" value="${tahunAktif}"></div>
+                                <div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
+                                <div class="mb-4"><label class="form-label fw-bold small">Biaya Makan (Rp)</label><input id="cfgM" class="form-control" value="${config.biayaMakan}"></div>
+                                <button class="btn btn-success fw-bold w-100" onclick="simpanC()">SIMPAN PERUBAHAN</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="modal fade" id="mKwitansi" data-bs-backdrop="static" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-0" id="isiKwitansi"></div></div></div></div>
+            <div class="modal fade" id="mKwitansi" data-bs-backdrop="static" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden shadow-lg"><div class="modal-body p-0" id="isiKwitansi"></div></div></div></div>
             <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
-                // DATA GLOBAL AMAN DARI ERROR KUTIP
                 const DB_SANTRI = ${JSON.stringify(data)};
                 const THN_AKTIF = "${tahunAktif}";
 
@@ -310,13 +323,7 @@ app.get('/admin', (req, res) => {
 
                 function downloadPDF(nama) {
                     const el = document.getElementById('area-cetak-kwitansi');
-                    const opt = { 
-                        margin: 0.5, 
-                        filename: 'Kwitansi_' + nama.replace(/ /g, '_') + '.pdf', 
-                        image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 2 },
-                        jsPDF: { unit: 'in', format: 'a5', orientation: 'landscape' } 
-                    };
+                    const opt = { margin: 0.5, filename: 'Kwitansi_' + nama.replace(/ /g, '_') + '.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a5', orientation: 'landscape' } };
                     html2pdf().set(opt).from(el).save();
                 }
 
@@ -339,10 +346,9 @@ app.get('/admin', (req, res) => {
                     html += '<div style="margin-top:30px; text-align:right;"><p>Admin PSB Ihya,</p><br><br><p>( ............................ )</p></div></div>';
                     
                     html += '<div class="p-4 bg-light d-flex flex-column gap-2 border-top">';
-                    html += '<button onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\')" class="btn btn-danger fw-bold py-2"><i class="fas fa-file-pdf me-2"></i>DOWNLOAD PDF KWITANSI</button>';
-                    html += '<a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold py-2 text-center"><i class="fab fa-whatsapp me-2"></i>KIRIM RINCIAN KE WA</a>';
+                    html += '<button onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\')" class="btn btn-danger fw-bold py-2 shadow-sm"><i class="fas fa-file-pdf me-2"></i>DOWNLOAD PDF</button>';
+                    html += '<a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold py-2 text-center shadow-sm"><i class="fab fa-whatsapp me-2"></i>KIRIM WA</a>';
                     html += '<button class="btn btn-secondary fw-bold py-2" onclick="location.reload()">TUTUP</button></div>';
-                    
                     document.getElementById('isiKwitansi').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mKwitansi')).show();
                 }
@@ -364,7 +370,7 @@ app.get('/admin', (req, res) => {
                 function updateStatus(id, s) { fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
                 function simpanC() { fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
                 
-                // DETAIL DATA KEMBALI LENGKAP
+                // MEMULIHKAN TAMPILAN DETAIL LENGKAP
                 function lihatDetail(id) { 
                     const d = DB_SANTRI.find(x => x.id == id);
                     let html = '<div class="d-flex align-items-center mb-4">';
