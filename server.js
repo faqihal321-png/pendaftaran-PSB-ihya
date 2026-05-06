@@ -154,8 +154,6 @@ app.get('/admin', (req, res) => {
     
     const santriAktif = data.filter(p => p.status === 'Aktif').length;
     const santriTidakAktif = data.filter(p => p.status === 'Tidak Aktif').length;
-    
-    // --- SINRONISASI DASHBOARD: Sesuaikan dengan teks "SMP/MTs" dan "SMA/MA" ---
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
     const santriMA = data.filter(p => p.jenjang === 'SMA/MA').length;
 
@@ -166,11 +164,16 @@ app.get('/admin', (req, res) => {
             ? `<a href="/uploads/${file}" target="_blank" class="btn btn-xs ${color} fw-bold" style="font-size:0.65rem; padding:2px 5px;">${label}</a>` 
             : `<button class="btn btn-xs btn-light disabled" style="font-size:0.65rem; padding:2px 5px;">${label}</button>`;
 
+        // --- Logika Bulan Lengkap ---
+        const tglPart = p.tanggal ? p.tanggal.split(',')[0].split('/') : [];
+        const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        const labelDaftar = tglPart.length === 3 ? bulanIndo[parseInt(tglPart[1])-1] + ' ' + tglPart[2] : p.tahunDaftar;
+
         return `
             <tr class="santri-row" data-name="${p.nama.toLowerCase()}">
                 <td class="text-center small">${index + 1}</td>
                 <td class="text-center"><img src="${fotoUrl}" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>
-                <td><b>${p.nama}</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: ${p.tahunDaftar || '2025'}</small></td>
+                <td><b>${p.nama}</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: ${labelDaftar}</small></td>
                 <td class="text-center small">${p.jenjang || '-'}</td>
                 <td><div class="d-flex flex-wrap gap-1">${btnBerkas(p.berkas.foto, 'FOTO', 'btn-primary')}${btnBerkas(p.berkas.ijazah, 'IJAZAH', 'btn-secondary')}${btnBerkas(p.berkas.kk, 'KK', 'btn-info text-white')}${btnBerkas(p.berkas.ktp, 'KTP', 'btn-warning')}</div></td>
                 <td><select class="form-select form-select-sm fw-bold" onchange="updateStatus(${p.id}, this.value)"><option value="Aktif" ${p.status === 'Aktif' ? 'selected' : ''}>🟢 Aktif</option><option value="Tidak Aktif" ${p.status === 'Tidak Aktif' ? 'selected' : ''}>🔴 Tidak Aktif</option></select></td>
@@ -179,20 +182,16 @@ app.get('/admin', (req, res) => {
     }).join('');
 
     const cardsBayar = data.map((p) => {
-        // Nama bulan lengkap sesuai permintaan
         const months = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
         const tahunDaftarInt = parseInt(p.tahunDaftar || "2025");
         const tahunAktifInt = parseInt(tahunAktif);
-        
         const perluCekTunggakan = tahunAktifInt > tahunDaftarInt;
         const bayarLalu = p.pembayaran[tahunLalu] || {};
         const lunasLalu = months.every(m => bayarLalu['p-'+m] && bayarLalu['m-'+m]);
-        
         const isLocked = perluCekTunggakan && !lunasLalu;
         const belumDaftar = tahunAktifInt < tahunDaftarInt;
         const isTidakAktif = p.status === 'Tidak Aktif';
 
-        // Layout 2 Kolom (col-6) memanjang ke bawah
         const createCheck = (prefix) => months.map(m => {
             const lunas = p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif][prefix + '-' + m];
             return `
@@ -221,7 +220,6 @@ app.get('/admin', (req, res) => {
         if (isTidakAktif) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK ADA TAGIHAN KARENA TIDAK AKTIF</h5></div>`;
         if (belumDaftar) cardBodyContent = `<div class="py-5 text-center"><h5 class="text-muted fw-bold">SANTRI BELUM MENDAFTAR PADA TAHUN INI</h5></div>`;
 
-        // Search-Only (display: none secara default)
         return `
             <div class="bayar-row mb-4" data-name="${p.nama.toLowerCase()}" id="card-${p.id}" style="display: none;">
                 <div class="card border-0 shadow-sm rounded-4 ${isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : ''}">
@@ -253,7 +251,6 @@ app.get('/admin', (req, res) => {
                 .sidebar .nav-link.active { background: rgba(255,255,255,0.15) !important; color: white; }
                 .main-content { width: 100%; padding: 25px; }
                 .stat-card { border: none; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-                .search-box { border-radius: 50px; padding-left: 15px; }
                 .pointer-events-none { pointer-events: none; }
                 #hint-bayar { padding: 80px 20px; color: #888; text-align: center; }
             </style>
@@ -287,7 +284,7 @@ app.get('/admin', (req, res) => {
                             <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
                         </div>
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Pembayaran ${tahunAktif}</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
+                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran ${tahunAktif}</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
                             <div id="payment-container">
                                 <div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri untuk mengelola pembayaran.</h5></div>
                                 ${cardsBayar || '<div class="text-center p-5">Belum ada data santri.</div>'}
@@ -364,12 +361,16 @@ app.get('/admin', (req, res) => {
                 }
                 function lihatDetail(js) {
                     const d = JSON.parse(js);
+                    // --- Menggunakan Concatenation agar VS Code Aman ---
                     var html = '<div class="d-flex align-items-center mb-4">';
                     html += '<img src="/uploads/' + d.berkas.foto + '" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;">';
                     html += '<div><h3 class="fw-bold text-success mb-0">' + d.nama + '</h3><p class="text-muted small">' + d.jenjang + '</p></div></div>';
                     html += '<div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6>';
                     html += '<p class="small">NIK: ' + d.nik + '<br>Alamat: ' + d.alamat + '</p></div>';
-                    html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">Ayah: ' + d.namaAyah + '<br>WA: ' + d.whatsapp + '</p></div></div>';
+                    html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small">';
+                    html += 'Ayah: ' + d.namaAyah + ' (' + (d.pekerjaanAyah || '-') + ')<br>';
+                    html += 'Ibu: ' + (d.namaIbu || '-') + ' (' + (d.pekerjaanIbu || '-') + ')<br>';
+                    html += 'WA: ' + d.whatsapp + '</p></div></div>';
                     
                     document.getElementById('isiM').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mD')).show();
