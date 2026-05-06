@@ -9,7 +9,7 @@ const ExcelJS = require('exceljs');
 const app = express();
 
 /**
- * --- KONFIGURASI PENYIMPANAN PERMANEN (RAILWAY VOLUME) ---
+ * --- KONFIGURASI PENYIMPANAN PERMANEN ---
  */
 const VOLUME_PATH = '/app/data_pondok';
 const isProduction = process.env.RAILWAY_ENVIRONMENT_ID ? true : false;
@@ -67,6 +67,7 @@ app.post('/daftar', upload.fields([
         const baru = {
             id: Date.now(),
             ...req.body,
+            status: 'Aktif', // Status default santri baru
             berkas: {
                 ktp: getFileName('ktp'), ijazah: getFileName('ijazah'),
                 foto: getFileName('foto'), kk: getFileName('kk')
@@ -86,7 +87,23 @@ app.post('/daftar', upload.fields([
 });
 
 /**
- * --- ADMIN PANEL DENGAN SIDEBAR ---
+ * --- API UPDATE STATUS (BARU) ---
+ */
+app.post('/admin/update-status', (req, res) => {
+    if (!req.session.isLoggedIn) return res.status(403).send("Unauthorized");
+    const { id, status } = req.body;
+    let data = readData();
+    const index = data.findIndex(p => p.id == id);
+    if (index !== -1) {
+        data[index].status = status;
+        saveData(data);
+        return res.json({ success: true });
+    }
+    res.status(404).json({ success: false });
+});
+
+/**
+ * --- ADMIN PANEL ---
  */
 
 app.get('/login', (req, res) => {
@@ -115,24 +132,31 @@ app.get('/admin', (req, res) => {
     
     const rows = data.map((p, index) => {
         const detailJson = JSON.stringify(p).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-        const berkasBtn = (file, label, color) => file ? `<a href="/uploads/${file}" target="_blank" class="btn btn-xs ${color}" style="font-size:0.65rem; padding:2px 5px;">${label}</a>` : '';
+        const berkasBtn = (file, label, color) => file ? `<a href="/uploads/${file}" target="_blank" class="btn btn-xs ${color}" style="font-size:0.6rem; padding:1px 4px;">${label}</a>` : '';
+        
+        // Thumbnail Foto 3x4
+        const fotoUrl = p.berkas.foto ? `/uploads/${p.berkas.foto}` : 'https://via.placeholder.com/30x40?text=?';
 
         return `
             <tr>
                 <td class="text-center small">${index + 1}</td>
-                <td style="font-size:0.75rem;">${p.tanggal}</td>
-                <td><b>${p.nama}</b></td>
-                <td><span class="badge bg-light text-dark border">${p.jenjang || '-'}</span></td>
+                <td><img src="${fotoUrl}" style="width:35px; height:45px; object-fit:cover; border-radius:4px; border:1px solid #ddd;"></td>
+                <td><b>${p.nama}</b><br><small class="text-muted">${p.tanggal}</small></td>
+                <td class="text-center"><span class="badge bg-light text-dark border">${p.jenjang || '-'}</span></td>
                 <td>
-                    <div class="d-flex gap-1 flex-wrap">
+                    <div class="d-flex gap-1 flex-wrap mb-1">
                         ${berkasBtn(p.berkas.foto, 'Foto', 'btn-primary')}
                         ${berkasBtn(p.berkas.kk, 'KK', 'btn-secondary')}
                         ${berkasBtn(p.berkas.ktp, 'KTP', 'btn-info text-white')}
                         ${berkasBtn(p.berkas.ijazah, 'Ijazah', 'btn-success')}
                     </div>
+                    <select class="form-select form-select-sm" style="font-size:0.7rem; height:24px; padding:0 5px;" onchange="updateStatus(${p.id}, this.value)">
+                        <option value="Aktif" ${p.status === 'Aktif' ? 'selected' : ''}>🟢 Aktif</option>
+                        <option value="Tidak Aktif" ${p.status === 'Tidak Aktif' ? 'selected' : ''}>🔴 Tidak Aktif</option>
+                    </select>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-success w-100 fw-bold" onclick="lihatDetail('${detailJson}')">DETAIL</button>
+                    <button class="btn btn-sm btn-success w-100 fw-bold" style="font-size:0.75rem;" onclick="lihatDetail('${detailJson}')">DETAIL</button>
                 </td>
             </tr>
         `;
@@ -149,80 +173,55 @@ app.get('/admin', (req, res) => {
             <title>Panel Admin PSB</title>
             <style>
                 body { background-color: #f4f7f6; font-family: sans-serif; overflow-x: hidden; }
-                .sidebar { min-width: 250px; max-width: 250px; min-height: 100vh; background: #1e4d2b; color: white; transition: all 0.3s; }
+                .sidebar { min-width: 240px; max-width: 240px; min-height: 100vh; background: #1e4d2b; color: white; }
                 .sidebar .nav-link { color: rgba(255,255,255,0.7); border-radius: 10px; margin: 5px 15px; }
-                .sidebar .nav-link:hover, .sidebar .nav-link.active { background: rgba(255,255,255,0.1); color: white; }
-                .sidebar .nav-link i { width: 25px; }
-                .main-content { width: 100%; padding: 25px; }
-                .main-card { border-radius: 20px; border:none; box-shadow: 0 10px 30px rgba(0,0,0,0.05); background: white; }
+                .sidebar .nav-link.active { background: rgba(255,255,255,0.1); color: white; }
+                .main-content { width: 100%; padding: 20px; }
+                .main-card { border-radius: 15px; border:none; box-shadow: 0 8px 25px rgba(0,0,0,0.05); background: white; }
                 .table thead { background-color: #1e4d2b; color: white; }
-                .nav-pills .nav-link.active { background-color: rgba(255,255,255,0.2) !important; }
             </style>
         </head>
         <body>
             <div class="d-flex">
-                <!-- SIDEBAR -->
                 <nav class="sidebar shadow-lg">
-                    <div class="p-4 text-center">
-                        <h4 class="fw-bold mb-0">ADMIN PSB</h4>
-                        <p class="small opacity-50">Panel Manajemen</p>
-                    </div>
-                    <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
-                        <button class="nav-link text-start border-0 mb-2" id="v-pills-dash-tab" data-bs-toggle="pill" data-bs-target="#v-pills-dash" type="button" role="tab"><i class="fas fa-home me-2"></i> Dashboard</button>
-                        <button class="nav-link active text-start border-0 mb-2" id="v-pills-santri-tab" data-bs-toggle="pill" data-bs-target="#v-pills-santri" type="button" role="tab"><i class="fas fa-user-graduate me-2"></i> Data Santri</button>
+                    <div class="p-4 text-center"><h4 class="fw-bold mb-0">ADMIN PSB</h4><p class="small opacity-50">Panel Manajemen</p></div>
+                    <div class="nav flex-column nav-pills">
+                        <button class="nav-link text-start border-0 mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-home me-2"></i> Dashboard</button>
+                        <button class="nav-link active text-start border-0 mb-2" data-bs-toggle="pill" data-bs-target="#v-santri"><i class="fas fa-user-graduate me-2"></i> Data Santri</button>
                         <hr class="mx-3">
                         <a href="/logout" class="nav-link text-start text-danger"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
                     </div>
                 </nav>
 
-                <!-- MAIN CONTENT -->
                 <div class="main-content">
-                    <div class="tab-content" id="v-pills-tabContent">
+                    <div class="tab-content">
+                        <div class="tab-pane fade" id="v-dash"><h2 class="fw-bold text-success">Dashboard</h2><p class="text-muted">Selamat datang.</p></div>
                         
-                        <!-- TAB DASHBOARD (KOSONG) -->
-                        <div class="tab-pane fade" id="v-pills-dash" role="tabpanel">
-                            <h2 class="fw-bold text-success">Dashboard</h2>
-                            <p class="text-muted">Selamat datang di panel administrasi.</p>
-                            <div class="main-card p-5 text-center mt-4">
-                                <i class="fas fa-chart-line fa-4x text-light mb-3"></i>
-                                <h4 class="text-muted">Statistik akan muncul di sini</h4>
-                            </div>
-                        </div>
-
-                        <!-- TAB DATA SANTRI (TABEL) -->
-                        <div class="tab-pane fade show active" id="v-pills-santri" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
-                                <div>
-                                    <h2 class="fw-bold text-success mb-0">Data Pendaftar</h2>
-                                    <p class="text-muted small mb-0">Manajemen santri baru 2026/2027</p>
-                                </div>
+                        <div class="tab-pane fade show active" id="v-santri">
+                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+                                <h4 class="fw-bold text-success mb-0">Manajemen Data Santri</h4>
                                 <div class="d-flex gap-2">
-                                    <div class="p-2 px-3 bg-white border rounded-pill fw-bold text-success shadow-sm">TOTAL: ${data.length}</div>
-                                    <a href="/admin/export" class="btn btn-success rounded-pill shadow-sm"><i class="fas fa-file-excel me-1"></i> EXCEL</a>
+                                    <div class="p-1 px-3 bg-white border rounded-pill fw-bold text-success shadow-sm small">TOTAL: ${data.length}</div>
+                                    <a href="/admin/export" class="btn btn-sm btn-success rounded-pill shadow-sm"><i class="fas fa-file-excel me-1"></i> EXCEL</a>
                                 </div>
                             </div>
-                            
-                            <div class="card main-card p-4">
+                            <div class="card main-card p-3">
                                 <div class="table-responsive">
-                                    <table class="table table-hover align-middle">
+                                    <table class="table table-hover align-middle" style="font-size:0.85rem;">
                                         <thead>
                                             <tr class="text-center">
-                                                <th>No</th><th>Waktu</th><th>Nama Lengkap</th><th>Jenjang</th><th>Berkas</th><th>Aksi</th>
+                                                <th>No</th><th>Foto</th><th>Nama Lengkap</th><th>Jenjang</th><th>Berkas & Status</th><th>Aksi</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            ${rows || '<tr><td colspan="6" class="text-center py-4 text-muted">Belum ada data masuk.</td></tr>'}
-                                        </tbody>
+                                        <tbody>${rows || '<tr><td colspan="6" class="text-center py-4 text-muted">Kosong</td></tr>'}</tbody>
                                     </table>
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
 
-            <!-- Modal Detail -->
             <div class="modal fade" id="modalDetail" tabindex="-1">
                 <div class="modal-dialog modal-lg modal-dialog-centered">
                     <div class="modal-content border-0" style="border-radius: 20px;">
@@ -237,22 +236,35 @@ app.get('/admin', (req, res) => {
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
+                // Fungsi update status tanpa reload
+                function updateStatus(id, newStatus) {
+                    fetch('/admin/update-status', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({id, status: newStatus})
+                    })
+                    .then(res => res.json())
+                    .then(data => { if(!data.success) alert('Gagal update status'); });
+                }
+
                 function lihatDetail(jsonStr) {
                     const d = JSON.parse(jsonStr);
                     document.getElementById('isiModal').innerHTML = \`
+                        <div class="row g-3 text-center mb-3">
+                            <div class="col-12"><img src="/uploads/\${d.berkas.foto}" style="width:120px; height:160px; object-fit:cover; border-radius:10px; border:3px solid #1e4d2b;"></div>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-6 border-end">
-                                <h6 class="text-success fw-bold border-bottom pb-2">DATA PRIBADI</h6>
-                                <p class="mb-1 small text-muted">Nama:</p><p class="fw-bold">\${d.nama}</p>
-                                <p class="mb-1 small text-muted">NISN / NIK:</p><p class="fw-bold">\${d.nisn || '-'} / \${d.nik || '-'}</p>
+                                <h6 class="text-success fw-bold border-bottom pb-2 small">DATA PRIBADI</h6>
+                                <p class="mb-1 small text-muted">Nama:</p><p class="fw-bold mb-2">\${d.nama}</p>
+                                <p class="mb-1 small text-muted">NISN / NIK:</p><p class="fw-bold mb-2 small">\${d.nisn || '-'} / \${d.nik || '-'}</p>
                                 <p class="mb-1 small text-muted">Alamat:</p><p class="fw-bold small">\${d.alamat || '-'}</p>
                             </div>
-                            <div class="col-md-6">
-                                <h6 class="text-success fw-bold border-bottom pb-2">DATA ORANG TUA</h6>
-                                <p class="mb-1 small text-muted">Ayah:</p><p class="fw-bold">\${d.namaAyah || '-'} (\${d.kerjaAyah || '-'})</p>
-                                <p class="mb-1 small text-muted">Ibu:</p><p class="fw-bold">\${d.namaIbu || '-'} (\${d.kerjaIbu || '-'})</p>
-                                <p class="mb-1 small text-muted">WhatsApp:</p>
-                                <p><a href="https://wa.me/\${d.whatsapp}" target="_blank" class="fw-bold text-success text-decoration-none">\${d.whatsapp || '-'}</a></p>
+                            <div class="col-md-6 ps-md-4">
+                                <h6 class="text-success fw-bold border-bottom pb-2 small">DATA ORANG TUA</h6>
+                                <p class="mb-1 small text-muted">Ayah:</p><p class="fw-bold mb-2 small">\${d.namaAyah || '-'} (\${d.kerjaAyah || '-'})</p>
+                                <p class="mb-1 small text-muted">Ibu:</p><p class="fw-bold mb-2 small">\${d.namaIbu || '-'} (\${d.kerjaIbu || '-'})</p>
+                                <p class="mb-1 small text-muted">WhatsApp:</p><p><a href="https://wa.me/\${d.whatsapp}" target="_blank" class="fw-bold text-success text-decoration-none">\${d.whatsapp || '-'}</a></p>
                             </div>
                         </div>
                     \`;
@@ -270,7 +282,7 @@ app.get('/admin/export', async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Pendaftar');
     sheet.columns = [
-        { header: 'Tanggal', key: 'tanggal', width: 25 },
+        { header: 'Status', key: 'status', width: 12 },
         { header: 'Nama', key: 'nama', width: 30 },
         { header: 'WA', key: 'whatsapp', width: 20 },
         { header: 'Jenjang', key: 'jenjang', width: 15 },
@@ -285,9 +297,6 @@ app.get('/admin/export', async (req, res) => {
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
 
-/**
- * --- START SERVER ---
- */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log("Server aktif di port: " + PORT);
