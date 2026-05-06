@@ -187,7 +187,14 @@ app.get('/admin/export', async (req, res) => {
     res.end();
 });
 
-app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
+// ... (Pastikan bagian rute /logout sudah ditutup)
+app.get('/logout', (req, res) => { 
+    req.session.destroy(); 
+    res.redirect('/login'); 
+});
 
+// Konfigurasi Port untuk Railway
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Aplikasi aktif di port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Aplikasi aktif di port ${PORT}`);
+});
