@@ -11,11 +11,11 @@
         
         body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; color: #1e293b; scroll-behavior: smooth; margin: 0; }
 
-        /* --- HOME SECTION (LANDING PAGE) --- */
+        /* --- HERO SECTION (BERANDA) --- */
         .landing-hero {
             height: 100vh;
             width: 100%;
-            background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('/assets/background.jpg');
+            background: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('/assets/background1.jpg');
             background-size: cover;
             background-position: center;
             position: relative;
@@ -25,70 +25,52 @@
             padding: 50px 7%;
         }
 
-        .hero-text-top {
-            color: white;
-            text-align: left;
+        .hero-text-top { color: white; text-align: left; z-index: 2; }
+        .hero-text-top h1 { font-size: 4.5rem; font-weight: 300; line-height: 1.1; margin-bottom: 20px; }
+        .hero-text-top .sub-info { font-size: 1.2rem; line-height: 1.5; font-weight: 400; }
+        .hero-text-top .pondok-name { font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* KOTAK SLIDESHOW KIRI BAWAH */
+        .sliding-box-container {
+            position: absolute;
+            bottom: 40px;
+            left: 7%;
+            width: 280px;
+            height: 180px;
+            border-radius: 25px;
+            overflow: hidden;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            z-index: 3;
         }
 
-        .hero-text-top h1 {
-            font-size: 4.5rem;
-            font-weight: 300;
-            line-height: 1.1;
-            margin-bottom: 20px;
+        #sliding-content {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 0.6s ease-in-out;
+            background-image: url('/assets/background2.jpg');
         }
 
-        .hero-text-top .sub-info {
-            font-size: 1.2rem;
-            line-height: 1.5;
-            font-weight: 400;
-        }
-
-        .hero-text-top .pondok-name {
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .hero-footer-right {
-            display: flex;
-            justify-content: flex-end;
-            padding-bottom: 20px;
-        }
+        .hero-footer-right { display: flex; justify-content: flex-end; align-items: flex-end; padding-bottom: 20px; z-index: 2; }
 
         .btn-mendaftar {
-            background-color: white;
-            color: black;
-            padding: 12px 40px;
-            border-radius: 5px;
-            font-weight: 600;
-            text-decoration: none;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            background-color: white; color: black; padding: 12px 40px; border-radius: 5px;
+            font-weight: 600; text-decoration: none; font-size: 1.1rem;
+            transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
+        .btn-mendaftar:hover { background-color: #f0f0f0; transform: scale(1.05); color: #1e4d2b; }
 
-        .btn-mendaftar:hover {
-            background-color: #f0f0f0;
-            transform: scale(1.05);
-            color: #1e4d2b;
-        }
-
-        /* --- FORM SECTION --- */
+        /* FORMULIR STYLING */
         .header-banner { background: #1e4d2b; padding: 80px 0 160px 0; border-radius: 0 0 50px 50px; }
-        .main-card {
-            border: none; border-radius: 30px; background: rgba(255, 255, 255, 0.98);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
-            margin-top: -120px; padding: 50px; margin-bottom: 50px;
-        }
-        .section-tag {
-            display: inline-block; background: #f1f8f4; color: #1e4d2b;
-            padding: 6px 16px; border-radius: 50px; font-weight: 700; font-size: 0.75rem;
-            margin-bottom: 15px; text-transform: uppercase;
-        }
+        .main-card { border: none; border-radius: 30px; background: white; box-shadow: 0 20px 50px rgba(0,0,0,0.1); margin-top: -120px; padding: 50px; margin-bottom: 50px; }
+        .section-tag { display: inline-block; background: #f1f8f4; color: #1e4d2b; padding: 6px 16px; border-radius: 50px; font-weight: 700; font-size: 0.75rem; margin-bottom: 15px; text-transform: uppercase; }
         .form-control, .form-select { border-radius: 12px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; }
 
         @media (max-width: 768px) {
             .hero-text-top h1 { font-size: 2.5rem; }
+            .sliding-box-container { width: 180px; height: 120px; bottom: 100px; }
             .landing-hero { padding: 40px 5%; }
         }
     </style>
@@ -105,6 +87,10 @@
             </div>
         </div>
 
+        <div class="sliding-box-container shadow">
+            <div id="sliding-content"></div>
+        </div>
+
         <div class="hero-footer-right">
             <a href="#formulir" class="btn-mendaftar shadow">
                 Klik untuk mendaftar
@@ -113,80 +99,35 @@
     </section>
 
     <div class="header-banner text-center text-white" id="formulir">
-        <div class="container">
-            <h2 class="fw-bold">FORMULIR PENDAFTARAN ONLINE</h2>
-            <p class="opacity-75 lead">Lengkapi data di bawah ini dengan benar</p>
-        </div>
+        <div class="container"><h2 class="fw-bold">FORMULIR PENDAFTARAN ONLINE</h2></div>
     </div>
-
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-10">
                 <div class="main-card">
                     <form action="/daftar" method="POST" enctype="multipart/form-data">
-                        
                         <div class="section-tag">Biodata Santri</div>
                         <div class="row g-3 mb-4">
-                            <div class="col-md-7">
-                                <label class="form-label fw-bold small">Nama Lengkap</label>
-                                <input type="text" name="nama" class="form-control" required>
-                            </div>
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold small">Jenjang</label>
-                                <select name="jenjang" class="form-select" required>
-                                    <option value="" selected disabled>Pilih Jenjang</option>
-                                    <option value="SMP/MTs">SMP/MTs</option>
-                                    <option value="SMA/MA">SMA/MA</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">NISN</label>
-                                <input type="number" name="nisn" class="form-control" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">NIK</label>
-                                <input type="number" name="nik" class="form-control" required>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label fw-bold small">Alamat Lengkap</label>
-                                <textarea name="alamat" class="form-control" rows="3" required></textarea>
-                            </div>
+                            <div class="col-md-7"><label class="form-label fw-bold small">Nama Lengkap</label><input type="text" name="nama" class="form-control" required></div>
+                            <div class="col-md-5"><label class="form-label fw-bold small">Jenjang</label><select name="jenjang" class="form-select" required><option value="" selected disabled>Pilih Jenjang</option><option value="SMP/MTs">SMP/MTs</option><option value="SMA/MA">SMA/MA</option></select></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small">NISN</label><input type="number" name="nisn" class="form-control" required></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small">NIK</label><input type="number" name="nik" class="form-control" required></div>
+                            <div class="col-12"><label class="form-label fw-bold small">Alamat Lengkap</label><textarea name="alamat" class="form-control" rows="3" required></textarea></div>
                         </div>
 
                         <div class="section-tag">Data Orang Tua</div>
                         <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">Nama Ayah</label>
-                                <input type="text" name="namaAyah" class="form-control" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">Nama Ibu</label>
-                                <input type="text" name="namaIbu" class="form-control" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">WhatsApp Aktif</label>
-                                <input type="number" name="whatsapp" class="form-control" placeholder="08xxx" required>
-                            </div>
+                            <div class="col-md-6"><label class="form-label fw-bold small">Nama Ayah</label><input type="text" name="namaAyah" class="form-control" required></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small">Nama Ibu</label><input type="text" name="namaIbu" class="form-control" required></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small">WhatsApp Aktif</label><input type="number" name="whatsapp" class="form-control" placeholder="08xxx" required></div>
                         </div>
 
                         <div class="section-tag">Upload Dokumen</div>
                         <div class="row g-3 mb-5">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">Pas Foto 3x4</label>
-                                <input type="file" name="foto" class="form-control" accept="image/*" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">Kartu Keluarga (KK)</label>
-                                <input type="file" name="kk" class="form-control" accept="image/*,application/pdf" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">KTP Orang Tua</label>
-                                <input type="file" name="ktp" class="form-control" accept="image/*,application/pdf" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small">Ijazah / SKL</label>
-                                <input type="file" name="ijazah" class="form-control" accept="image/*,application/pdf" required>
-                            </div>
+                            <div class="col-md-6"><label class="form-label fw-bold small">Pas Foto 3x4</label><input type="file" name="foto" class="form-control" accept="image/*" required></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small">Kartu Keluarga (KK)</label><input type="file" name="kk" class="form-control" accept="image/*,application/pdf" required></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small">KTP Orang Tua</label><input type="file" name="ktp" class="form-control" accept="image/*,application/pdf" required></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small">Ijazah / SKL</label><input type="file" name="ijazah" class="form-control" accept="image/*,application/pdf" required></div>
                         </div>
 
                         <button type="submit" class="btn btn-success w-100 py-3 fw-bold shadow-lg" style="border-radius:15px; background: #1e4d2b;">
@@ -198,9 +139,25 @@
         </div>
     </div>
 
-    <footer class="text-center py-4 text-muted">
-        <small>© 2026 Pondok Pesantren Ihyauth Tholibin</small>
-    </footer>
+    <script>
+        const miniImages = [
+            '/assets/background2.jpg',
+            '/assets/background3.jpg',
+            '/assets/background4.jpg',
+            '/assets/background5.jpg'
+        ];
+        
+        let miniIndex = 0;
+        const slidingBox = document.getElementById('sliding-content');
+
+        function slideMini() {
+            miniIndex = (miniIndex + 1) % miniImages.length;
+            slidingBox.style.backgroundImage = `url('${miniImages[miniIndex]}')`;
+        }
+
+        // Jalankan pergantian foto setiap 1000ms (1 detik)
+        setInterval(slideMini, 1000);
+    </script>
 
 </body>
 </html>
