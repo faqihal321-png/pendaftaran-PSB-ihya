@@ -9,13 +9,13 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
         
-        body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; color: #1e293b; scroll-behavior: smooth; margin: 0; }
+        body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; color: #1e293b; scroll-behavior: smooth; margin: 0; overflow-x: hidden; }
 
         /* --- HERO SECTION --- */
         .landing-hero {
             min-height: 100vh;
             width: 100%;
-            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('/assets/background1.jpg');
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('/assets/background1.jpg');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -25,8 +25,7 @@
             flex-direction: column;
         }
 
-        /* HEADER KIRI ATAS */
-        .hero-header { color: white; margin-bottom: 40px; }
+        .hero-header { color: white; margin-bottom: 30px; }
         .hero-header h1 { 
             font-size: 4.8rem; 
             font-weight: 300; 
@@ -50,11 +49,10 @@
             padding-bottom: 40px;
         }
 
-        /* SLIDESHOW KIRI (DIPINDAHKAN KE TENGAH) */
         .sliding-box-main {
             width: 100%;
             max-width: 450px;
-            height: 280px;
+            height: 300px;
             border-radius: 30px;
             overflow: hidden;
             border: 6px solid rgba(255, 255, 255, 0.2);
@@ -63,59 +61,58 @@
         #slide-content {
             width: 100%; height: 100%;
             background-size: cover; background-position: center;
-            transition: background-image 0.8s ease-in-out;
+            transition: background-image 0.6s ease-in-out;
             background-image: url('/assets/background2.jpg');
         }
 
-        /* ARTIKEL KANAN */
         .article-card-glass {
             background: rgba(255, 255, 255, 0.12);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 35px;
-            padding: 40px;
+            padding: 35px;
             max-width: 600px;
             color: white;
             box-shadow: 0 30px 60px rgba(0,0,0,0.25);
         }
-        .article-card-glass h5 { font-weight: 800; color: #ffeb3b; margin-bottom: 20px; letter-spacing: 1px; }
-        .article-card-glass p { font-size: 0.98rem; line-height: 1.8; margin-bottom: 15px; text-align: justify; opacity: 0.95; }
+        .article-card-glass h5 { font-weight: 800; color: #ffeb3b; margin-bottom: 15px; }
+        .article-card-glass p { font-size: 0.95rem; line-height: 1.7; margin-bottom: 12px; text-align: justify; opacity: 0.95; }
         .highlight-text { color: #fff; font-weight: 700; border-bottom: 2px solid #ffeb3b; }
 
-        /* TOMBOL DAFTAR */
-        .btn-cta-pendaftaran {
-            background: white;
+        .btn-cta-daftar {
+            background: #ffc107;
             color: #1e4d2b;
             padding: 16px 45px;
-            border-radius: 18px;
+            border-radius: 15px;
             font-weight: 800;
             text-decoration: none;
             display: inline-block;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 15px;
+            margin-top: 10px;
         }
-        .btn-cta-pendaftaran:hover { 
-            transform: translateY(-5px); 
-            background: #f8fafc;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-            color: #1b5e20;
-        }
+        .btn-cta-daftar:hover { transform: translateY(-5px); background: white; color: #1e4d2b; }
 
-        /* --- BAGIAN FORMULIR --- */
-        #formulir-section { padding: 100px 0; background: white; }
-        .form-container-card {
-            border: none; border-radius: 35px; background: white;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.08); padding: 50px;
+        /* --- FORMULIR SECTION --- */
+        #formulir-pendaftaran { padding: 80px 0; background: #f0f4f8; }
+        .form-header-title { background: #1e4d2b; color: white; padding: 50px 0 120px 0; text-align: center; border-radius: 50px 50px 0 0; }
+        .main-card { 
+            border: none; border-radius: 30px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); 
+            margin-top: -100px; padding: 45px; background: white; 
         }
+        .kop-pondok { display: flex; align-items: center; justify-content: center; border-bottom: 3px double #e2e8f0; padding-bottom: 25px; margin-bottom: 35px; }
+        .logo-pondok { width: 80px; margin-right: 20px; }
+        .section-title { font-weight: 700; color: #2e7d32; border-left: 5px solid #2e7d32; padding-left: 15px; margin: 35px 0 20px 0; }
+        .form-control, .form-select { border-radius: 12px; padding: 12px 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; }
+        .btn-submit { background: linear-gradient(135deg, #1e4d2b, #2e7d32); border: none; border-radius: 15px; padding: 18px; font-weight: 700; color: white; transition: all 0.3s; }
+        .btn-submit:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(30, 77, 43, 0.2); }
 
         @media (max-width: 992px) {
             .mid-content-row { flex-direction: column; text-align: center; }
             .hero-header h1 { font-size: 3rem; }
-            .article-card-glass p { text-align: center; }
+            .sliding-box-main { max-width: 100%; height: 220px; }
         }
     </style>
 </head>
@@ -126,8 +123,8 @@
             <h1>Pendaftaran<br>Santri Baru 2026</h1>
             <div class="info-text">
                 Pondok Pesantren<br>
-                <span class="fw-bold text-uppercase" style="letter-spacing:1px;">IHYAUTH THOLIBIN</span><br>
-                Semarang Jaya, Air Hitam, Lampung Barat
+                <span class="fw-bold text-uppercase">IHYAUTH THOLIBIN</span><br>
+                <small>Semarang Jaya, Air Hitam, Lampung Barat</small>
             </div>
         </div>
 
@@ -139,40 +136,118 @@
             <div class="article-card-glass">
                 <h5>INVESTASI MASA DEPAN</h5>
                 <p>Pendidikan agama adalah investasi terbaik untuk masa depan putra-putri kita. <span class="highlight-text">PONDOK PESANTREN IHYAUTH THOLIBIN</span> hadir sebagai kawah candradimuka bagi pembentukan karakter generasi muda Islam.</p>
-                <p>Di sini, para santri dibimbing untuk mempraktikkan nilai-nilai kesantunan, kemandirian, dan disiplin. Kami menawarkan lingkungan yang tenang dan kondusif, ideal untuk pendalaman ilmu agama dan pembinaan spiritual.</p>
-                <p>Mari bergabung dalam keluarga besar kami! Segera daftarkan putra-putri Anda dan jadilah bagian dari perjalanan dakwah serta pendidikan yang luhur.</p>
-                
+                <p>Di sini, para santri dibimbing untuk mempraktikkan nilai-nilai kesantunan, kemandirian, dan disiplin dalam kehidupan sehari-hari. Kami menawarkan lingkungan yang tenang dan kondusif bagi pembinaan spiritual.</p>
+                <p>Mari bergabung dalam keluarga besar kami! Segera daftarkan putra-putri Anda dan jadilah bagian dari perjalanan dakwah serta pendidikan di Pondok Pesantren Ihyauth Tholibin.</p>
                 <div class="text-end">
-                    <a href="#formulir-section" class="btn-cta-pendaftaran">
-                        Mulai Mendaftar <i class="fas fa-arrow-right ms-2"></i>
+                    <a href="#formulir-pendaftaran" class="btn-cta-daftar">
+                        <i class="fas fa-edit me-2"></i> Daftar Sekarang
                     </a>
                 </div>
             </div>
         </div>
     </section>
 
-    <div id="formulir-section">
+    <div class="form-header-title" id="formulir-pendaftaran">
         <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-lg-10">
-                    <div class="form-container-card">
-                        <div class="text-center mb-5">
-                            <h2 class="fw-bold text-success text-uppercase">Formulir Pendaftaran Online</h2>
-                            <p class="text-muted">Isilah data di bawah ini dengan lengkap dan benar</p>
+            <h2 class="fw-bold">Penerimaan Santri Baru (PSB)</h2>
+            <p class="opacity-75">Tahun Ajaran 2026/2027</p>
+        </div>
+    </div>
+
+    <div class="container mb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-9">
+                <div class="card main-card">
+                    
+                    <div class="kop-pondok text-center text-md-start">
+                        <img src="/assets/logo-pondok.png" alt="Logo" class="logo-pondok mb-3 mb-md-0">
+                        <div>
+                            <h4 class="fw-bold mb-1" style="color: #1e4d2b;">Pondok Pesantren Ihyauth Tholibin</h4>
+                            <p class="mb-0 text-muted small">Jl. Pasar Jumat, Semarang Jaya, Air Hitam, Lampung Barat</p>
                         </div>
-                        
-                        <form action="/daftar" method="POST" enctype="multipart/form-data">
-                            <div class="row g-4">
-                                <div class="col-md-12">
-                                    <label class="form-label fw-bold">Nama Lengkap Santri</label>
-                                    <input type="text" name="nama" class="form-control p-3 border-light bg-light" required>
-                                </div>
-                                </div>
-                            <button type="submit" class="btn btn-success w-100 mt-5 py-3 fw-bold shadow-lg" style="border-radius:15px; background:#1e4d2b;">
-                                KIRIM DATA PENDAFTARAN
-                            </button>
-                        </form>
                     </div>
+
+                    <h4 class="text-center fw-bold mb-4">FORMULIR PENDAFTARAN ONLINE</h4>
+
+                    <form action="/daftar" method="POST" enctype="multipart/form-data">
+                        <h5 class="section-title">Data Pribadi Santri</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Nama Lengkap</label>
+                                <input type="text" name="nama" class="form-control" placeholder="Ahmad Fauzi" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Jenjang Pendidikan</label>
+                                <select name="jenjang" class="form-select" required>
+                                    <option value="" selected disabled>Pilih Jenjang</option>
+                                    <option value="SMP/MTs">SMP/MTs</option>
+                                    <option value="SMA/MA">SMA/MA</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">NISN</label>
+                                <input type="number" name="nisn" class="form-control" placeholder="10 Digit NISN" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">NIK</label>
+                                <input type="number" name="nik" class="form-control" placeholder="16 Digit NIK" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-muted">Alamat Lengkap</label>
+                                <textarea name="alamat" class="form-control" rows="3" placeholder="Dusun, RT/RW, Desa, Kecamatan, Kabupaten" required></textarea>
+                            </div>
+                        </div>
+
+                        <h5 class="section-title">Data Orang Tua / Wali</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Nama Ayah</label>
+                                <input type="text" name="namaAyah" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Pekerjaan Ayah</label>
+                                <input type="text" name="kerjaAyah" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Nama Ibu</label>
+                                <input type="text" name="namaIbu" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Pekerjaan Ibu</label>
+                                <input type="text" name="kerjaIbu" class="form-control" placeholder="Contoh: Ibu Rumah Tangga" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">WhatsApp (Aktif)</label>
+                                <input type="number" name="whatsapp" class="form-control" placeholder="08xxx" required>
+                            </div>
+                        </div>
+
+                        <h5 class="section-title">Upload Berkas</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Foto Santri (3x4)</label>
+                                <input type="file" name="foto" class="form-control" accept="image/*" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Kartu Keluarga (KK)</label>
+                                <input type="file" name="kk" class="form-control" accept="image/*,application/pdf" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">KTP Orang Tua</label>
+                                <input type="file" name="ktp" class="form-control" accept="image/*,application/pdf" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Ijazah Terakhir / SKL</label>
+                                <input type="file" name="ijazah" class="form-control" accept="image/*,application/pdf" required>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-5">
+                            <button type="submit" class="btn btn-submit w-100 shadow">
+                                <i class="fas fa-paper-plane me-2"></i> KIRIM DATA PENDAFTARAN
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -186,17 +261,16 @@
             '/assets/background5.jpg'
         ];
         
-        let idx = 0;
+        let i = 0;
         const frame = document.getElementById('slide-content');
 
-        function nextSlide() {
-            idx = (idx + 1) % gallery.length;
-            frame.style.backgroundImage = `url('${gallery[idx]}')`;
+        function rotate() {
+            i = (i + 1) % gallery.length;
+            frame.style.backgroundImage = `url('${gallery[i]}')`;
         }
 
-        // Slideshow berjalan setiap 1 detik
-        setInterval(nextSlide, 1000);
+        // Slideshow ganti tiap 1 detik
+        setInterval(rotate, 1000);
     </script>
-
 </body>
 </html>
