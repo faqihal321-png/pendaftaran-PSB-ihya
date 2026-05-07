@@ -9,7 +9,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
         
-        body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; color: #1e293b; scroll-behavior: smooth; margin: 0; overflow-x: hidden; }
+        body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; color: #1e293b; scroll-behavior: smooth; margin: 0; }
 
         /* --- HERO SECTION --- */
         .landing-hero {
@@ -20,86 +20,75 @@
             background-position: center;
             background-attachment: fixed;
             position: relative;
-            padding: 60px 5%;
+            padding: 60px 7%;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
         }
 
-        /* TEXT KIRI ATAS */
-        .hero-top-left { color: white; z-index: 5; max-width: 500px; }
-        .hero-top-left h1 { 
+        /* HEADER KIRI ATAS */
+        .hero-header { color: white; margin-bottom: 40px; }
+        .hero-header h1 { 
             font-size: 4.8rem; 
             font-weight: 300; 
             line-height: 1; 
-            margin-bottom: 25px;
+            margin-bottom: 15px;
             letter-spacing: -2px;
         }
-        .hero-top-left .info-label {
+        .hero-header .info-text {
             font-size: 1.1rem;
-            line-height: 1.6;
-            border-left: 3px solid rgba(255,255,255,0.5);
+            border-left: 3px solid rgba(255,255,255,0.4);
             padding-left: 20px;
         }
-        .hero-top-left b { font-weight: 800; letter-spacing: 1px; }
 
-        /* KONTEN TENGAH (ARTIKEL DI KANAN) */
-        .hero-mid-content {
+        /* AREA TENGAH: SLIDESHOW & ARTIKEL SEJAJAR */
+        .mid-content-row {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
             align-items: center;
-            margin-top: -50px;
+            flex-grow: 1;
+            gap: 40px;
+            padding-bottom: 40px;
         }
 
-        .article-card {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 30px;
-            padding: 35px;
+        /* SLIDESHOW KIRI (DIPINDAHKAN KE TENGAH) */
+        .sliding-box-main {
             width: 100%;
-            max-width: 550px;
-            color: white;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
-        }
-
-        .article-card h5 { font-weight: 800; color: #ffeb3b; margin-bottom: 15px; font-size: 1.1rem; }
-        .article-card p { font-size: 0.95rem; line-height: 1.7; margin-bottom: 15px; text-align: justify; opacity: 0.95; }
-        .article-card .highlight { color: #fff; font-weight: 700; border-bottom: 2px solid #ffeb3b; }
-
-        /* SLIDESHOW KIRI BAWAH (DIPERBESAR) */
-        .hero-bottom-left {
-            display: flex;
-            align-items: flex-end;
-            padding-bottom: 20px;
-        }
-
-        .sliding-box-large {
-            width: 400px; /* Ukuran diperbesar */
-            height: 250px;
-            border-radius: 25px;
+            max-width: 450px;
+            height: 280px;
+            border-radius: 30px;
             overflow: hidden;
             border: 6px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-            position: relative;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
         }
-
-        #slide-frame {
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            background-position: center;
+        #slide-content {
+            width: 100%; height: 100%;
+            background-size: cover; background-position: center;
             transition: background-image 0.8s ease-in-out;
             background-image: url('/assets/background2.jpg');
         }
 
+        /* ARTIKEL KANAN */
+        .article-card-glass {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 35px;
+            padding: 40px;
+            max-width: 600px;
+            color: white;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.25);
+        }
+        .article-card-glass h5 { font-weight: 800; color: #ffeb3b; margin-bottom: 20px; letter-spacing: 1px; }
+        .article-card-glass p { font-size: 0.98rem; line-height: 1.8; margin-bottom: 15px; text-align: justify; opacity: 0.95; }
+        .highlight-text { color: #fff; font-weight: 700; border-bottom: 2px solid #ffeb3b; }
+
         /* TOMBOL DAFTAR */
-        .btn-mendaftar-final {
+        .btn-cta-pendaftaran {
             background: white;
             color: #1e4d2b;
-            padding: 15px 45px;
-            border-radius: 15px;
+            padding: 16px 45px;
+            border-radius: 18px;
             font-weight: 800;
             text-decoration: none;
             display: inline-block;
@@ -107,60 +96,87 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-top: 10px;
+            margin-top: 15px;
         }
-        .btn-mendaftar-final:hover { 
-            transform: translateY(-5px) scale(1.02); 
+        .btn-cta-pendaftaran:hover { 
+            transform: translateY(-5px); 
             background: #f8fafc;
             box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            color: #1b5e20;
+        }
+
+        /* --- BAGIAN FORMULIR --- */
+        #formulir-section { padding: 100px 0; background: white; }
+        .form-container-card {
+            border: none; border-radius: 35px; background: white;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.08); padding: 50px;
         }
 
         @media (max-width: 992px) {
-            .hero-mid-content { justify-content: center; margin-top: 40px; }
-            .hero-top-left h1 { font-size: 3.5rem; }
-            .sliding-box-large { width: 300px; height: 200px; }
+            .mid-content-row { flex-direction: column; text-align: center; }
+            .hero-header h1 { font-size: 3rem; }
+            .article-card-glass p { text-align: center; }
         }
     </style>
 </head>
 <body>
 
     <section class="landing-hero">
-        <div class="hero-top-left">
+        <div class="hero-header">
             <h1>Pendaftaran<br>Santri Baru 2026</h1>
-            <div class="info-label">
+            <div class="info-text">
                 Pondok Pesantren<br>
-                <b>IHYAUTH THOLIBIN</b><br>
-                <small>Semarang Jaya, Air Hitam, Lampung Barat</small>
+                <span class="fw-bold text-uppercase" style="letter-spacing:1px;">IHYAUTH THOLIBIN</span><br>
+                Semarang Jaya, Air Hitam, Lampung Barat
             </div>
         </div>
 
-        <div class="hero-mid-content">
-            <div class="article-card">
+        <div class="mid-content-row">
+            <div class="sliding-box-main">
+                <div id="slide-content"></div>
+            </div>
+
+            <div class="article-card-glass">
                 <h5>INVESTASI MASA DEPAN</h5>
-                <p>Pendidikan agama adalah investasi terbaik untuk masa depan putra-putri kita. <span class="highlight">PONDOK PESANTREN IHYAUTH THOLIBIN</span> hadir sebagai kawah candradimuka bagi pembentukan karakter generasi muda Islam.</p>
+                <p>Pendidikan agama adalah investasi terbaik untuk masa depan putra-putri kita. <span class="highlight-text">PONDOK PESANTREN IHYAUTH THOLIBIN</span> hadir sebagai kawah candradimuka bagi pembentukan karakter generasi muda Islam.</p>
                 <p>Di sini, para santri dibimbing untuk mempraktikkan nilai-nilai kesantunan, kemandirian, dan disiplin. Kami menawarkan lingkungan yang tenang dan kondusif, ideal untuk pendalaman ilmu agama dan pembinaan spiritual.</p>
                 <p>Mari bergabung dalam keluarga besar kami! Segera daftarkan putra-putri Anda dan jadilah bagian dari perjalanan dakwah serta pendidikan yang luhur.</p>
+                
                 <div class="text-end">
-                    <a href="#formulir" class="btn-mendaftar-final">
-                        Klik untuk mendaftar <i class="fas fa-arrow-right ms-2"></i>
+                    <a href="#formulir-section" class="btn-cta-pendaftaran">
+                        Mulai Mendaftar <i class="fas fa-arrow-right ms-2"></i>
                     </a>
                 </div>
             </div>
         </div>
-
-        <div class="hero-bottom-left">
-            <div class="sliding-box-large">
-                <div id="slide-frame"></div>
-            </div>
-        </div>
     </section>
 
-    <div id="formulir" style="padding: 100px 0; background: white;">
-        <div class="container text-center mb-5">
-            <h2 class="fw-800 text-success text-uppercase">Formulir Pendaftaran Online</h2>
-            <hr style="width: 100px; border: 3px solid #1e4d2b; margin: 20px auto; opacity: 1;">
+    <div id="formulir-section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="form-container-card">
+                        <div class="text-center mb-5">
+                            <h2 class="fw-bold text-success text-uppercase">Formulir Pendaftaran Online</h2>
+                            <p class="text-muted">Isilah data di bawah ini dengan lengkap dan benar</p>
+                        </div>
+                        
+                        <form action="/daftar" method="POST" enctype="multipart/form-data">
+                            <div class="row g-4">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold">Nama Lengkap Santri</label>
+                                    <input type="text" name="nama" class="form-control p-3 border-light bg-light" required>
+                                </div>
+                                </div>
+                            <button type="submit" class="btn btn-success w-100 mt-5 py-3 fw-bold shadow-lg" style="border-radius:15px; background:#1e4d2b;">
+                                KIRIM DATA PENDAFTARAN
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
-        </div>
+    </div>
 
     <script>
         const gallery = [
@@ -170,16 +186,16 @@
             '/assets/background5.jpg'
         ];
         
-        let i = 0;
-        const frame = document.getElementById('slide-frame');
+        let idx = 0;
+        const frame = document.getElementById('slide-content');
 
-        function rotateImages() {
-            i = (i + 1) % gallery.length;
-            frame.style.backgroundImage = `url('${gallery[i]}')`;
+        function nextSlide() {
+            idx = (idx + 1) % gallery.length;
+            frame.style.backgroundImage = `url('${gallery[idx]}')`;
         }
 
-        // Ganti foto per 1 detik
-        setInterval(rotateImages, 1000);
+        // Slideshow berjalan setiap 1 detik
+        setInterval(nextSlide, 1000);
     </script>
 
 </body>
