@@ -36,22 +36,18 @@ const saveData = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null
 const readConfig = () => {
     try {
         if (!fs.existsSync(CONFIG_FILE)) {
-            // Default nilai berdasarkan rincian gambar resmi
             const def = { 
                 tahunAktif: "2026",
-                biayaDaftar: "100.000",   // Poin A
-                biayaRegistrasi: "500.000", // Poin B (Seragam, Buku, Infaq)
-                biayaOps: "500.000",      // Poin C (Operasional)
-                biayaPHBI: "200.000",     // Poin C (PHBI)
-                biayaKes: "100.000",      // Poin C (Kesehatan)
-                biayaIanah: "50.000",     // Poin C (Bulanan)
-                biayaMakan: "400.000"     // Poin D (Bulanan)
+                biayaA: "100.000",   // Pendaftaran
+                biayaB: "500.000",   // Seragam, Buku, Infaq
+                biayaC: "50.000",    // Bulanan Pondok
+                biayaD: "400.000"    // Bulanan Makan
             };
             fs.writeFileSync(CONFIG_FILE, JSON.stringify(def));
             return def;
         }
         return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-    } catch (e) { return { tahunAktif: "2026", biayaIanah: "50.000", biayaMakan: "400.000" }; }
+    } catch (e) { return { tahunAktif: "2026", biayaA: "0", biayaB: "0", biayaC: "0", biayaD: "0" }; }
 };
 const saveConfig = (cfg) => fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
 
@@ -93,7 +89,6 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
     } catch (e) { res.status(500).send("Error: " + e.message); }
 });
 
-// Sisanya (Edit, Hapus, Update Status, Update Config, Login) tetap sama...
 app.post('/admin/edit-santri', (req, res) => {
     if (!req.session.isLoggedIn) return res.status(403).json({ success: false });
     const { id, nama, jenjang, nisn, nik, alamat, namaAyah, whatsapp } = req.body;
@@ -157,7 +152,7 @@ app.post('/login', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-    res.send(\`
+    res.send(`
         <!DOCTYPE html>
         <html lang="id">
         <head>
@@ -167,6 +162,8 @@ app.get('/login', (req, res) => {
             <style>
                 body { background: linear-gradient(135deg, #1e4d2b 0%, #2e7d32 100%); height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; }
                 .login-card { background: white; padding: 40px; border-radius: 25px; width: 100%; max-width: 380px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+                .btn-success { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); border: none; transition: all 0.3s ease; }
+                .btn-success:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(46,125,50,0.4); }
             </style>
         </head>
         <body>
@@ -180,7 +177,7 @@ app.get('/login', (req, res) => {
             </div>
         </body>
         </html>
-    \`);
+    `);
 });
 
 app.get('/admin', (req, res) => {
@@ -195,7 +192,6 @@ app.get('/admin', (req, res) => {
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
     const santriMA = data.filter(p => p.jenjang === 'SMA/MA').length;
 
-    // Tabel santri tetap sama...
     const rowsSantri = data.map((p, index) => {
         const fotoUrl = p.berkas.foto ? '/uploads/' + p.berkas.foto : 'https://via.placeholder.com/40x50';
         const btnB = (file, label, color) => {
@@ -233,60 +229,47 @@ app.get('/admin', (req, res) => {
 
     const cardsBayar = data.map((p) => {
         const isBaru = p.tahunDaftar === tahunAktif;
-        const bayar = p.pembayaran[tahunAktif] || {};
+        const history = p.pembayaran[tahunAktif] || {};
 
         const createCheck = (id, label, price) => {
-            const lunas = bayar[id];
-            return \`<div class="col-6 mb-2">
-                <div class="form-check p-1 border rounded \${lunas ? 'bg-light border-success' : 'bg-white shadow-sm'}">
-                    <input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="\${id}-\${p.id}" 
-                        data-id="\${id}" data-price="\${price}" data-label="\${label}" \${lunas ? 'checked disabled' : ''} onchange="hitungTotal(\${p.id})">
-                    <label class="form-check-label fw-bold small \${lunas ? 'text-success' : ''}">\${label}</label>
-                </div>
-            </div>\`;
+            const lunas = history[id];
+            return '<div class="col-6 mb-2"><div class="form-check p-1 border rounded '+(lunas ? 'bg-light border-success' : 'bg-white shadow-sm')+'">' +
+                    '<input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="'+id+'-'+p.id+'" ' +
+                        'data-id="'+id+'" data-price="'+price+'" data-label="'+label+'" ' +
+                        (lunas ? 'checked disabled' : '')+' onchange="hitungTotal('+p.id+')">' +
+                    '<label class="form-check-label fw-bold small '+(lunas ? 'text-success' : '')+'">'+label+'</label></div></div>';
         };
 
-        return \`
-        <div class="bayar-row mb-4" data-name="\${p.nama.toLowerCase()}" id="card-\${p.id}" style="display: none;">
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-header bg-success text-white py-2"><h6 class="mb-0 fw-bold">\${p.nama} (\${tahunAktif})</h6></div>
-                <div class="card-body p-3">
-                    
-                    \${isBaru ? \`
-                    <p class="fw-bold text-success border-bottom pb-1 small text-uppercase">Pendaftaran & Registrasi (A & B)</p>
-                    <div class="row gx-1">
-                        \${createCheck('pendaftaran', 'Biaya Pendaftaran', config.biayaDaftar)}
-                        \${createCheck('registrasi', 'Registrasi Baru', config.biayaRegistrasi)}
-                    </div>\` : ''}
+        return '<div class="bayar-row mb-4" data-name="'+p.nama.toLowerCase()+'" id="card-'+p.id+'" style="display: none;">' +
+            '<div class="card border-0 shadow-sm rounded-4">' +
+                '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
+                    '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+p.nama+' ('+tahunAktif+')</h6>' +
+                '</div><div class="card-body p-3">' +
+                
+                // POIN A & B (Hanya untuk santri baru)
+                (isBaru ? 
+                '<p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Poin A & B (Registrasi)</p>' +
+                '<div class="row gx-1">' +
+                    createCheck('poin-a', 'Uang Pendaftaran (A)', config.biayaA) +
+                    createCheck('poin-b', 'Seragam, Buku, Kitab (B)', config.biayaB) +
+                '</div>' : '') +
 
-                    <p class="fw-bold text-primary border-bottom pb-1 mt-3 small text-uppercase">Biaya Rutinan 1 Tahun (C)</p>
-                    <div class="row gx-1">
-                        \${createCheck('ops', 'Ops Pondok', config.biayaOps)}
-                        \${createCheck('phbi', 'PHBI', config.biayaPHBI)}
-                        \${createCheck('kes', 'Kesehatan', config.biayaKes)}
-                    </div>
+                // POIN C (Pondok)
+                '<p class="fw-bold text-primary border-bottom pb-1 mt-3 mb-2 small text-uppercase">Poin C (Bulanan Pondok)</p>' +
+                '<div class="row gx-1">' + months.map(m => createCheck('c-'+m, m, config.biayaC)).join('') + '</div>' +
 
-                    <p class="fw-bold text-danger border-bottom pb-1 mt-3 small text-uppercase">I'anah & Makan Bulanan (C & D)</p>
-                    <div class="row gx-2">
-                        <div class="col-md-6 border-end">
-                            <p class="small text-center fw-bold">I'ANAH (50rb)</p>
-                            <div class="row gx-1">\${months.map(m => createCheck('i-' + m, m, config.biayaIanah)).join('')}</div>
-                        </div>
-                        <div class="col-md-6">
-                            <p class="small text-center fw-bold">MAKAN (400rb)</p>
-                            <div class="row gx-1">\${months.map(m => createCheck('m-' + m, m, config.biayaMakan)).join('')}</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">
-                    <div><span class="text-muted small fw-bold">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-\${p.id}">0</span></h4></div>
-                    <button class="btn btn-success fw-bold px-4 rounded-3 shadow-sm" onclick="prosesBayar(\${p.id})">KONFIRMASI BAYAR</button>
-                </div>
-            </div>
-        </div>\`;
+                // POIN D (Makan)
+                '<p class="fw-bold text-danger border-bottom pb-1 mt-3 mb-2 small text-uppercase">Poin D (Bulanan Makan)</p>' +
+                '<div class="row gx-1">' + months.map(m => createCheck('d-'+m, m, config.biayaD)).join('') + '</div>' +
+
+                '</div>' +
+                '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
+                    '<div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
+                    '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+')"><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
+                '</div></div></div>';
     }).join('');
 
-    res.send(\`
+    res.send(`
         <!DOCTYPE html>
         <html lang="id">
         <head>
@@ -303,7 +286,7 @@ app.get('/admin', (req, res) => {
                 .sidebar .nav-link.active { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%) !important; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
                 .main-content { width: 100%; padding: 25px; }
                 .sidebar-kop { padding: 25px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; text-align: center; }
-                .sidebar-kop img { width: 60px; height: 60px; margin-bottom: 12px; border-radius: 50%; padding: 5px; background: white; }
+                .sidebar-kop img { width: 70px; height: 70px; margin-bottom: 12px; border-radius: 50%; padding: 5px; background: white; }
             </style>
         </head>
         <body>
@@ -311,7 +294,7 @@ app.get('/admin', (req, res) => {
                 <nav class="sidebar shadow-lg">
                     <div class="sidebar-kop">
                         <img src="/assets/logo-pondok.png" onerror="this.src='https://via.placeholder.com/70x70?text=LOGO'">
-                        <h6 class="fw-bold small text-white text-uppercase">IHYAUTH THOLIBIN</h6>
+                        <h6>PONDOK PESANTREN<br>IHYAUTH THOLIBIN</h6>
                     </div>
                     <div class="nav flex-column nav-pills">
                         <button class="nav-link active mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-th-large me-2"></i> Dashboard</button>
@@ -324,34 +307,38 @@ app.get('/admin', (req, res) => {
                 </nav>
                 <div class="main-content">
                     <div class="tab-content">
-                        <div class="tab-pane fade show active" id="v-dash">
-                            <h3>Dashboard</h3>
-                            <div class="row g-3">
-                                <div class="col-md-4"><div class="card p-3 bg-success text-white rounded-4 shadow-sm"><h6>Santri Aktif</h6><h2>\${santriAktifCount}</h2></div></div>
-                                <div class="col-md-4"><div class="card p-3 bg-primary text-white rounded-4 shadow-sm"><h6>Total Santri</h6><h2>\${data.length}</h2></div></div>
-                            </div>
-                        </div>
+                        <div class="tab-pane fade show active" id="v-dash"><h3>Dashboard</h3></div>
                         <div class="tab-pane fade" id="v-santri">
-                            <div class="d-flex justify-content-between mb-3"><h4 class="fw-bold text-success">DATA SANTRI</h4><input id="cari-santri" class="form-control w-25 rounded-pill" placeholder="Cari..." onkeyup="filterDataSantri()"></div>
-                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><table class="table align-middle"><thead><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>\${rowsSantri}</tbody></table></div>
+                            <div class="d-flex justify-content-between mb-3"><h4>Data Santri</h4><input id="cari-santri" class="form-control w-25 rounded-pill" placeholder="Cari..." onkeyup="filterS()"></div>
+                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><table class="table"><thead><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri}</tbody></table></div>
                         </div>
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success">PEMBAYARAN</h4><input id="cari-bayar" class="form-control w-50 rounded-pill shadow-sm" placeholder="Cari nama santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
-                            <div id="payment-container"><div id="hint-bayar" class="py-5 text-center text-muted"><h5>🔍 Cari nama santri...</h5></div>\${cardsBayar}</div>
+                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4>Pembayaran</h4><input id="cari-bayar" class="form-control w-50 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
+                            <div id="payment-container"><div id="hint-bayar" class="py-5 text-center text-muted"><h5>🔍 Cari nama santri...</h5></div>${cardsBayar}</div>
                         </div>
-                        <div class="tab-pane fade" id="v-set"><h4>Setting Biaya</h4><div class="card p-4 border-0 shadow-sm rounded-4"><button class="btn btn-success" onclick="simpanC()">Simpan Perubahan</button></div></div>
+                        <div class="tab-pane fade" id="v-set">
+                            <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Biaya</h4>
+                            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;">
+                                <div class="mb-2"><label class="small fw-bold">Poin A (Pendaftaran)</label><input type="text" id="cfgA" class="form-control" value="${config.biayaA}"></div>
+                                <div class="mb-2"><label class="small fw-bold">Poin B (Registrasi)</label><input type="text" id="cfgB" class="form-control" value="${config.biayaB}"></div>
+                                <div class="mb-2"><label class="small fw-bold">Poin C (Pondok)</label><input type="text" id="cfgC" class="form-control" value="${config.biayaC}"></div>
+                                <div class="mb-3"><label class="small fw-bold">Poin D (Makan)</label><input type="text" id="cfgD" class="form-control" value="${config.biayaD}"></div>
+                                <div class="mb-3"><label class="small fw-bold">Tahun Aktif</label><input type="text" id="cfgT" class="form-control" value="${tahunAktif}"></div>
+                                <button class="btn btn-success fw-bold w-100" onclick="simpanC()">SIMPAN</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4"><div class="modal-body p-4" id="isiM"></div></div></div></div>
+            <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
             <div class="modal fade" id="mKwitansi" data-bs-backdrop="static"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 rounded-4 shadow-lg"><div class="modal-body p-0" id="isiKwitansi"></div></div></div></div>
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
-                const DB_SANTRI = \${JSON.stringify(data)};
+                const DB_SANTRI = ${JSON.stringify(data)};
 
-                function filterDataSantri() {
-                    const q = document.getElementById('cari-santri').value.toLowerCase().trim();
+                function filterS() {
+                    const q = document.getElementById('cari-santri').value.toLowerCase();
                     document.querySelectorAll('.santri-row').forEach(r => r.style.display = r.dataset.name.includes(q) ? '' : 'none');
                 }
 
@@ -365,57 +352,64 @@ app.get('/admin', (req, res) => {
                     const card = document.getElementById('card-' + id);
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
                     let total = 0;
-                    checks.forEach(c => { total += parseInt(c.dataset.price.replace(/\\\\./g, '')); });
+                    checks.forEach(c => { total += parseInt(c.getAttribute('data-price').replace(/\\./g, '')); });
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
 
-                function tampilkanKwitansi(nama, total, rincian) {
+                function tampilkanKwitansi(nama, total, rincian, wa) {
                     let tableRows = rincian.map(i => \`<tr><td class="p-2 border-bottom small">\${i.ket}</td><td class="p-2 border-bottom text-end small">Rp \${parseInt(i.hrg).toLocaleString('id-ID')}</td></tr>\`).join('');
-                    let html = \`<div id="pdf-area" class="p-4 bg-white">
-                        <div class="text-center border-bottom pb-3 mb-3"><h5 class="fw-bold mb-0">IHYAUTH THOLIBIN</h5><small>Kwitansi Pembayaran Resmi</small></div>
-                        <p class="small mb-1">Terima dari: <b>\${nama}</b></p>
-                        <table class="w-100 mb-3">\${tableRows}<tr class="fw-bold bg-light"><td class="p-2">TOTAL</td><td class="p-2 text-end text-success">Rp \${total}</td></tr></table>
-                        <div class="text-center py-1 border rounded fw-bold text-success mb-3">LUNAS</div>
-                        <div class="d-flex justify-content-between px-3 small"><div class="text-center">Orang Tua<br><br><br>(........)</div><div class="text-center">Admin<br><br><br><b>Bendahara</b></div></div>
-                    </div>
-                    <div class="p-3 bg-light d-flex flex-column gap-2 border-top">
-                        <button onclick="downloadPDF('\${nama}')" class="btn btn-danger fw-bold"><i class="fas fa-file-pdf me-2"></i>PDF</button>
-                        <button class="btn btn-secondary" onclick="location.reload()">TUTUP</button>
-                    </div>\`;
+                    let html = \`
+                        <div id="pdf-area" class="p-4 bg-white">
+                            <div class="text-center border-bottom pb-3 mb-3">
+                                <h5 class="fw-bold mb-0">IHYAUTH THOLIBIN</h5>
+                                <small>Kwitansi Pembayaran Resmi</small>
+                            </div>
+                            <p class="small mb-1">Nama: <b>\${nama}</b></p>
+                            <table class="w-100 mb-3">\${tableRows}<tr class="fw-bold bg-light"><td class="p-2">TOTAL AKHIR</td><td class="p-2 text-end text-success">Rp \${total}</td></tr></table>
+                            <div class="text-center py-1 border rounded fw-bold text-success mb-3">LUNAS</div>
+                        </div>
+                        <div class="p-3 bg-light d-flex flex-column gap-2 border-top">
+                            <button onclick="downloadPDF('\${nama}')" class="btn btn-danger fw-bold"><i class="fas fa-file-pdf me-2"></i>PDF</button>
+                            <button class="btn btn-secondary" onclick="location.reload()">TUTUP</button>
+                        </div>\`;
                     document.getElementById('isiKwitansi').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mKwitansi')).show();
                 }
 
                 function downloadPDF(nama) {
-                    html2pdf().set({ margin: 10, filename: 'Kwitansi_'+nama+'.pdf', jsPDF: { unit: 'mm', format: 'a4' } }).from(document.getElementById('pdf-area')).save();
+                    html2pdf().set({ margin: 10, filename: 'Kwitansi_'+nama+'.pdf' }).from(document.getElementById('pdf-area')).save();
                 }
 
                 function prosesBayar(id) {
                     const s = DB_SANTRI.find(x => x.id == id);
                     const total = document.getElementById('total-' + id).innerText;
                     const checks = document.getElementById('card-'+id).querySelectorAll('.pay-check:checked:not(:disabled)');
-                    if(checks.length === 0) return alert("Pilih poin pembayaran!");
+                    if(checks.length === 0) return alert("Pilih item!");
                     
-                    const itemIds = Array.from(checks).map(c => c.dataset.id);
-                    const rincian = Array.from(checks).map(c => ({ ket: c.dataset.label, hrg: c.dataset.price.replace(/\\\\./g, '') }));
+                    const itemIds = Array.from(checks).map(c => c.getAttribute('data-id'));
+                    const rincian = Array.from(checks).map(c => ({ ket: c.getAttribute('data-label'), hrg: c.getAttribute('data-price').replace(/\\./g, '') }));
 
                     if(confirm("Konfirmasi bayar Rp " + total + "?")) {
-                        fetch('/admin/konfirmasi-bayar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ santriId: id, tahun: "\${tahunAktif}", itemIds: itemIds }) })
-                        .then(res => res.json()).then(d => { if(d.success) tampilkanKwitansi(s.nama, total, rincian); });
+                        fetch('/admin/konfirmasi-bayar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ santriId: id, tahun: "${tahunAktif}", itemIds: itemIds }) })
+                        .then(res => res.json()).then(d => { if(d.success) tampilkanKwitansi(s.nama, total, rincian, s.whatsapp); });
                     }
                 }
-                
-                // Fungsi detail & edit tetap ada...
+
                 function lihatDetail(id) {
                     const d = DB_SANTRI.find(x => x.id == id);
-                    let html = \`<div class="text-center mb-3"><img src="/uploads/\${d.berkas.foto}" class="rounded shadow" style="width:100px; height:125px; object-fit:cover;"></div>
-                    <p><b>Nama:</b> \${d.nama}<br><b>NISN:</b> \${d.nisn}<br><b>WhatsApp:</b> \${d.whatsapp}</p>
-                    <button class="btn btn-secondary w-100" data-bs-dismiss="modal">Tutup</button>\`;
+                    let html = '<div class="text-center mb-3"><img src="/uploads/'+d.berkas.foto+'" class="rounded shadow" style="width:100px; height:125px; object-fit:cover;"></div>' +
+                               '<p><b>Nama:</b> '+d.nama+'<br><b>NISN:</b> '+(d.nisn||'-')+'<br><b>WhatsApp:</b> '+d.whatsapp+'</p>' +
+                               '<button class="btn btn-secondary w-100" data-bs-dismiss="modal">Tutup</button>';
                     document.getElementById('isiM').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
+
+                function simpanC() {
+                    const payload = { tahunAktif: document.getElementById('cfgT').value, biayaA: document.getElementById('cfgA').value, biayaB: document.getElementById('cfgB').value, biayaC: document.getElementById('cfgC').value, biayaD: document.getElementById('cfgD').value };
+                    fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }).then(res => res.json()).then(d => { if(d.success) location.reload(); });
+                }
             </script>
-        </body></html>\`);
+        </body></html>`);
 });
 
 app.get('/logout', (req, res) => { req.session.destroy(); res.redirect('/login'); });
