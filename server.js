@@ -369,9 +369,17 @@ app.get('/admin', (req, res) => {
                     } else { for (let r of rows) { r.style.display = (r.getAttribute('data-name')||'').includes(query) ? '' : 'none'; } }
                 }
 
+                // FUNGSI CETAK PDF YANG DIPERBAIKI
                 function downloadPDF(nama) {
-                    const element = document.getElementById('pdf-content');
-                    const opt = { margin: 10, filename: 'Kwitansi_'+nama+'.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+                    const element = document.getElementById('pdf-area');
+                    if (!element) return alert("Area cetak tidak ditemukan!");
+                    const opt = { 
+                        margin: 10, 
+                        filename: 'Kwitansi_'+nama+'.pdf', 
+                        image: { type: 'jpeg', quality: 0.98 }, 
+                        html2canvas: { scale: 2, useCORS: true }, 
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+                    };
                     html2pdf().set(opt).from(element).save();
                 }
 
@@ -392,8 +400,21 @@ app.get('/admin', (req, res) => {
                     });
                     let msg = 'Assalamu%27alaikum.%0APembayaran%20santri%20*'+encodeURIComponent(nama)+'*%20sebesar%20*Rp%20'+total+'*%20berhasil%20diterima.%0A%0A*Rincian%3A*%0A'+waRincian+'%0A*TOTAL%3A%20Rp%20'+total+'*%0ATerima%20kasih.';
                     let waLink = 'https://wa.me/'+cleanWa+'?text='+msg;
-                    let html = '<div id="pdf-content" style="padding:30px; font-family:sans-serif;"><div style="text-align:center; border-bottom:2px solid #1e4d2b; padding-bottom:10px; margin-bottom:20px;"><h3 style="margin:0; color:#1e4d2b;">KWITANSI PEMBAYARAN</h3><p style="margin:0; font-size:12px;">Pesantren PSB Ihya</p></div><p>Telah terima dari: <b>'+nama+'</b></p><table style="width:100%; border-collapse:collapse; margin-bottom:20px;"><thead style="background:#f2f2f2;"><tr><th style="padding:10px; border:1px solid #ddd; text-align:left;">Keterangan</th><th style="padding:10px; border:1px solid #ddd; text-align:right;">Biaya</th></tr></thead><tbody>'+tableRows+'</tbody><tfoot style="font-weight:bold; background:#f2f2f2;"><tr><td style="padding:10px; border:1px solid #ddd;">TOTAL AKHIR</td><td style="padding:10px; border:1px solid #ddd; text-align:right; color:#1e4d2b;">Rp '+total+'</td></tr></tfoot></table><div style="margin-top:40px; display:flex; justify-content:space-between;"><div style="text-align:center; width:150px;"><p style="font-size:12px;">Orang Tua</p><br><br><p>( ..................... )</p></div><div style="text-align:center; width:150px;"><p style="font-size:12px;">Admin Pondok</p><br><br><p style="color:#1e4d2b; font-weight:bold; border:1px solid #1e4d2b; padding:2px 5px;">LUNAS</p></div></div></div>';
-                    html += '<div class="d-flex flex-column gap-2 mt-4"><button class="btn btn-danger fw-bold" onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\")"><i class="fas fa-file-pdf me-2"></i>Download PDF</button><a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold text-center"><i class="fab fa-whatsapp me-2"></i>Kirim WhatsApp</a><button class="btn btn-light border" onclick="location.reload()">Tutup</button></div>';
+                    
+                    // HTML AREA CETAK DENGAN KOP RESMI
+                    let html = '<div id="pdf-area" style="padding:30px; font-family:sans-serif; color:#333; background:white;">';
+                    html += '<div style="display:flex; align-items:center; border-bottom:3px double #1e4d2b; padding-bottom:15px; margin-bottom:20px;">';
+                    html += '<img src="/assets/logo.png" style="width:70px; height:70px; margin-right:20px;" onerror="this.src=\\'https://via.placeholder.com/70x70?text=LOGO\\' ">';
+                    html += '<div style="text-align:left;"><h3 style="margin:0; color:#1e4d2b; font-weight:bold; font-size:20px;">PONDOK PESANTREN IHYAUTH THOLIBIN</h3>';
+                    html += '<p style="margin:0; font-size:13px;">Jl. Pasar Jumat, Semarang Jaya, Air Hitam, Lampung Barat</p></div></div>';
+                    
+                    html += '<div style="text-align:center; margin-bottom:20px;"><h4 style="margin:0; text-decoration:underline;">KWITANSI PEMBAYARAN</h4></div>';
+                    html += '<p>Telah terima dari: <b>'+nama+'</b></p>';
+                    html += '<table style="width:100%; border-collapse:collapse; margin-bottom:20px;"><thead style="background:#f2f2f2;"><tr><th style="padding:10px; border:1px solid #ddd; text-align:left;">Keterangan</th><th style="padding:10px; border:1px solid #ddd; text-align:right; width:150px;">Biaya</th></tr></thead><tbody>'+tableRows+'</tbody><tfoot style="font-weight:bold; background:#f2f2f2;"><tr><td style="padding:10px; border:1px solid #ddd;">TOTAL AKHIR</td><td style="padding:10px; border:1px solid #ddd; text-align:right; color:#1e4d2b;">Rp '+total+'</td></tr></tfoot></table>';
+                    html += '<div style="margin-top:40px; display:flex; justify-content:space-between;"><div style="text-align:center; width:150px;"><p style="font-size:12px;">Orang Tua</p><br><br><p>( ..................... )</p></div><div style="text-align:center; width:150px;"><p style="font-size:12px;">Admin Pondok</p><br><br><p style="color:#1e4d2b; font-weight:bold; border:1px solid #1e4d2b; padding:2px 5px;">LUNAS</p></div></div></div>';
+                    
+                    html += '<div class="p-4 bg-light d-flex flex-column gap-2 border-top"><button onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\')" class="btn btn-danger fw-bold"><i class="fas fa-file-pdf me-2"></i>DOWNLOAD PDF</button><a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold text-center"><i class="fab fa-whatsapp me-2"></i>KIRIM WHATSAPP</a><button class="btn btn-secondary" onclick="location.reload()">TUTUP</button></div>';
+                    
                     document.getElementById('isiKwitansi').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mKwitansi')).show();
                 }
