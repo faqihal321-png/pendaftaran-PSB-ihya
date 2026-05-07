@@ -16,9 +16,11 @@ const BASE_DIR = isProduction ? VOLUME_PATH : __dirname;
 const DATA_FILE = path.join(BASE_DIR, 'database.json');
 const CONFIG_FILE = path.join(BASE_DIR, 'config.json');
 const UPLOAD_DIR = path.join(BASE_DIR, 'uploads');
+const ASSETS_DIR = path.join(__dirname, 'assets');
 
 if (!fs.existsSync(BASE_DIR)) fs.mkdirSync(BASE_DIR, { recursive: true });
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR, { recursive: true });
 
 // --- FUNGSI PEMBANTU DATA & CONFIG ---
 const readData = () => {
@@ -47,7 +49,7 @@ const saveConfig = (cfg) => fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, nu
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use('/assets', express.static(ASSETS_DIR));
 app.use(session({ secret: 'psb-pondok-2026', resave: false, saveUninitialized: true }));
 
 const upload = multer({ storage: multer.diskStorage({
@@ -154,6 +156,8 @@ app.get('/login', (req, res) => {
             <style>
                 body { background: linear-gradient(135deg, #1e4d2b 0%, #2e7d32 100%); height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; }
                 .login-card { background: white; padding: 40px; border-radius: 25px; width: 100%; max-width: 380px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+                .btn-success { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); border: none; transition: all 0.3s ease; }
+                .btn-success:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(46,125,50,0.4); }
             </style>
         </head>
         <body>
@@ -210,7 +214,7 @@ app.get('/admin', (req, res) => {
                 btnB(p.berkas.kk, 'KK', 'btn-info text-white') +
                 btnB(p.berkas.ktp, 'KTP', 'btn-warning') +
             '</div></td>' +
-            '<td><select class="form-select form-select-sm fw-bold" onchange="updateStatus('+p.id+', this.value)">' +
+            '<td><select class="form-select form-select-sm fw-bold shadow-sm" onchange="updateStatus('+p.id+', this.value)">' +
                 '<option value="Aktif" '+(p.status === 'Aktif' ? 'selected' : '')+'>🟢 Aktif</option>' +
                 '<option value="Tidak Aktif" '+(p.status === 'Tidak Aktif' ? 'selected' : '')+'>🔴 Tidak Aktif</option>' +
             '</select></td>' +
@@ -262,7 +266,7 @@ app.get('/admin', (req, res) => {
             '<div class="card border-0 shadow-sm rounded-4 '+(isLocked || isTidakAktif || belumDaftar ? 'opacity-75' : '')+'">' +
                 '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
                     '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+p.nama+' ('+tahunAktif+')</h6>' +
-                    (isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+tahunDaftarAkurat+'</span>')) +
+                    (isTidakAktif ? '<span class="badge bg-danger shadow-sm">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold shadow-sm">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small shadow-sm">Daftar: '+tahunDaftarAkurat+'</span>')) +
                 '</div><div class="card-body p-3">'+bodyHTML+'</div>' +
                 '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
                     '<div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
@@ -281,25 +285,39 @@ app.get('/admin', (req, res) => {
             <title>Panel Admin PSB</title>
             <style>
                 body { background-color: #f4f7f6; font-family: sans-serif; }
-                .sidebar { min-width: 240px; background: #1e4d2b; min-height: 100vh; color: white; position: sticky; top: 0; }
-                .sidebar .nav-link { color: rgba(255,255,255,0.7); margin: 5px 15px; border-radius: 10px; border:none; background:none; text-align:left; width:88%; }
-                .sidebar .nav-link.active { background: rgba(255,255,255,0.15) !important; color: white; }
+                .sidebar { min-width: 250px; background: #1e4d2b; min-height: 100vh; color: white; position: sticky; top: 0; }
+                .sidebar .nav-link { color: rgba(255,255,255,0.7); margin: 5px 15px; border-radius: 12px; border:none; background:none; text-align:left; width:88%; transition: all 0.3s ease; }
+                .sidebar .nav-link:hover { background: rgba(255,255,255,0.1); color: white; transform: translateX(5px); }
+                .sidebar .nav-link.active { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%) !important; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
                 .main-content { width: 100%; padding: 25px; }
-                .stat-card { border: none; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+                .stat-card { border: none; border-radius: 20px; color: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1); transition: transform 0.3s ease; }
+                .stat-card:hover { transform: translateY(-5px); }
+                .btn { transition: all 0.3s ease; border-radius: 10px; }
+                .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.15); }
+                .btn:active { transform: translateY(0); }
                 #hint-bayar { padding: 80px 20px; color: #888; text-align: center; }
+                .form-control, .form-select { border-radius: 10px; }
+                .sidebar-kop { padding: 25px 15px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; text-align: center; }
+                .sidebar-kop img { width: 70px; height: 70px; margin-bottom: 12px; border-radius: 50%; padding: 5px; background: white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+                .sidebar-kop h6 { font-weight: 800; font-size: 0.85rem; letter-spacing: 0.5px; line-height: 1.3; }
             </style>
         </head>
         <body>
             <div class="d-flex">
-                <nav class="sidebar shadow">
-                    <div class="p-4 text-center border-bottom border-white border-opacity-10 mb-3"><h4 class="fw-bold">ADMIN PSB</h4></div>
+                <nav class="sidebar shadow-lg">
+                    <div class="sidebar-kop">
+                        <img src="/assets/logo-pondok.png" onerror="this.src='https://via.placeholder.com/70x70?text=LOGO'">
+                        <h6>PONDOK PESANTREN<br>IHYAUTH THOLIBIN</h6>
+                        <small class="text-white-50" style="font-size: 0.65rem;">PANEL ADMINISTRASI PSB</small>
+                    </div>
                     <div class="nav flex-column nav-pills">
                         <button class="nav-link active mb-2" data-bs-toggle="pill" data-bs-target="#v-dash"><i class="fas fa-th-large me-2"></i> Dashboard</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-santri"><i class="fas fa-users me-2"></i> Data Santri</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-tunggakan"><i class="fas fa-exclamation-triangle me-2"></i> Tunggakan</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-bayar"><i class="fas fa-check-double me-2"></i> Pembayaran</button>
                         <button class="nav-link mb-2" data-bs-toggle="pill" data-bs-target="#v-set"><i class="fas fa-cog me-2"></i> Setting</button>
-                        <hr class="mx-3"><a href="/logout" class="nav-link text-danger mt-4"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
+                        <hr class="mx-3 opacity-25">
+                        <a href="/logout" class="nav-link text-danger mt-2"><i class="fas fa-sign-out-alt me-2"></i> Logout</a>
                     </div>
                 </nav>
                 <div class="main-content">
@@ -318,7 +336,7 @@ app.get('/admin', (req, res) => {
                             <div class="d-flex justify-content-between mb-3 align-items-center">
                                 <h4 class="fw-bold text-success text-uppercase">Data Santri</h4>
                                 <div class="d-flex gap-2 w-50 justify-content-end">
-                                    <select id="filter-status" class="form-select form-select-sm w-25 rounded-pill border-success fw-bold" onchange="filterDataSantri()">
+                                    <select id="filter-status" class="form-select form-select-sm w-25 rounded-pill border-success fw-bold shadow-sm" onchange="filterDataSantri()">
                                         <option value="Semua">🔍 Semua</option>
                                         <option value="Aktif">🟢 Aktif</option>
                                         <option value="Tidak Aktif">🔴 Tidak Aktif</option>
@@ -333,10 +351,10 @@ app.get('/admin', (req, res) => {
                             <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>Nama</th><th>Bulan Belum Dibayar</th><th>Aksi</th></tr></thead><tbody>${rowsTunggakan || '<tr><td colspan="3" class="text-center py-4">Semua santri lunas!</td></tr>'}</tbody></table></div>
                         </div>
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase mb-0">Pembayaran</h4><div class="d-flex gap-2 w-50 justify-content-end"><div class="input-group input-group-sm" style="width: 180px;"><span class="input-group-text bg-success text-white border-success small fw-bold">Tahun</span><input type="text" id="cfgT" class="form-control border-success text-center fw-bold" value="${tahunAktif}"><button class="btn btn-success" onclick="simpanC()"><i class="fas fa-save"></i></button></div><input id="cari-bayar" class="form-control w-50 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div></div>
+                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase mb-0">Pembayaran</h4><div class="d-flex gap-2 w-50 justify-content-end"><div class="input-group input-group-sm shadow-sm" style="width: 180px;"><span class="input-group-text bg-success text-white border-success small fw-bold">Tahun</span><input type="text" id="cfgT" class="form-control border-success text-center fw-bold" value="${tahunAktif}"><button class="btn btn-success" onclick="simpanC()"><i class="fas fa-save"></i></button></div><input id="cari-bayar" class="form-control w-50 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div></div>
                             <div id="payment-container"><div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri...</h5></div>${cardsBayar}</div>
                         </div>
-                        <div class="tab-pane fade" id="v-set"><h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4><div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;"><div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div><div class="mb-4"><label class="form-label fw-bold small">Biaya Makan (Rp)</label><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div><button class="btn btn-success fw-bold w-100" onclick="simpanC()">SIMPAN PERUBAHAN</button></div></div>
+                        <div class="tab-pane fade" id="v-set"><h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4><div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;"><div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div><div class="mb-4"><label class="form-label fw-bold small">Biaya Makan (Rp)</label><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div><button class="btn btn-success fw-bold w-100 shadow-sm" onclick="simpanC()">SIMPAN PERUBAHAN</button></div></div>
                     </div>
                 </div>
             </div>
@@ -369,7 +387,6 @@ app.get('/admin', (req, res) => {
                     } else { for (let r of rows) { r.style.display = (r.getAttribute('data-name')||'').includes(query) ? '' : 'none'; } }
                 }
 
-                // FUNGSI CETAK PDF YANG DIPERBAIKI
                 function downloadPDF(nama) {
                     const element = document.getElementById('pdf-area');
                     if (!element) return alert("Area cetak tidak ditemukan!");
@@ -377,10 +394,10 @@ app.get('/admin', (req, res) => {
                         margin: 10, 
                         filename: 'Kwitansi_'+nama+'.pdf', 
                         image: { type: 'jpeg', quality: 0.98 }, 
-                        html2canvas: { scale: 2, useCORS: true }, 
+                        html2canvas: { scale: 2, useCORS: true, logging: false }, 
                         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
                     };
-                    html2pdf().set(opt).from(element).save();
+                    html2pdf().set(opt).from(element).toContainer().toCanvas().toImg().toPdf().save();
                 }
 
                 function hitungTotal(id) {
@@ -401,17 +418,16 @@ app.get('/admin', (req, res) => {
                     let msg = 'Assalamu%27alaikum.%0APembayaran%20santri%20*'+encodeURIComponent(nama)+'*%20sebesar%20*Rp%20'+total+'*%20berhasil%20diterima.%0A%0A*Rincian%3A*%0A'+waRincian+'%0A*TOTAL%3A%20Rp%20'+total+'*%0ATerima%20kasih.';
                     let waLink = 'https://wa.me/'+cleanWa+'?text='+msg;
                     
-                    // HTML AREA CETAK DENGAN KOP RESMI
                     let html = '<div id="pdf-area" style="padding:30px; font-family:sans-serif; color:#333; background:white;">';
                     html += '<div style="display:flex; align-items:center; border-bottom:3px double #1e4d2b; padding-bottom:15px; margin-bottom:20px;">';
-                    html += '<img src="/assets/logo-pondok.png" style="width:70px; height:70px; margin-right:20px;" onerror="this.src=\\'https://via.placeholder.com/70x70?text=LOGO\\' ">';
-                    html += '<div style="text-align:left;"><h3 style="margin:0; color:#1e4d2b; font-weight:bold; font-size:20px;">PONDOK PESANTREN IHYAUTH THOLIBIN</h3>';
-                    html += '<p style="margin:0; font-size:13px;">Jl. Pasar Jumat, Semarang Jaya, Air Hitam, Lampung Barat</p></div></div>';
+                    html += '<img src="/assets/logo-pondok.png" style="width:70px; height:70px; margin-right:20px; object-fit:contain;" crossorigin="anonymous" onerror="this.src=\\'https://via.placeholder.com/70x70?text=LOGO\\' ">';
+                    html += '<div style="text-align:left;"><h3 style="margin:0; color:#1e4d2b; font-weight:bold; font-size:18px;">PONDOK PESANTREN IHYAUTH THOLIBIN</h3>';
+                    html += '<p style="margin:0; font-size:11px;">Jl. Pasar Jumat, Semarang Jaya, Air Hitam, Lampung Barat</p></div></div>';
                     
-                    html += '<div style="text-align:center; margin-bottom:20px;"><h4 style="margin:0; text-decoration:underline;">KWITANSI PEMBAYARAN</h4></div>';
-                    html += '<p>Telah terima dari: <b>'+nama+'</b></p>';
-                    html += '<table style="width:100%; border-collapse:collapse; margin-bottom:20px;"><thead style="background:#f2f2f2;"><tr><th style="padding:10px; border:1px solid #ddd; text-align:left;">Keterangan</th><th style="padding:10px; border:1px solid #ddd; text-align:right; width:150px;">Biaya</th></tr></thead><tbody>'+tableRows+'</tbody><tfoot style="font-weight:bold; background:#f2f2f2;"><tr><td style="padding:10px; border:1px solid #ddd;">TOTAL AKHIR</td><td style="padding:10px; border:1px solid #ddd; text-align:right; color:#1e4d2b;">Rp '+total+'</td></tr></tfoot></table>';
-                    html += '<div style="margin-top:40px; display:flex; justify-content:space-between;"><div style="text-align:center; width:150px;"><p style="font-size:12px;">Orang Tua</p><br><br><p>( ..................... )</p></div><div style="text-align:center; width:150px;"><p style="font-size:12px;">Admin Pondok</p><br><br><p style="color:#1e4d2b; font-weight:bold; border:1px solid #1e4d2b; padding:2px 5px;">LUNAS</p></div></div></div>';
+                    html += '<div style="text-align:center; margin-bottom:20px;"><h4 style="margin:0; text-decoration:underline; font-size:16px;">KWITANSI PEMBAYARAN</h4></div>';
+                    html += '<p style="font-size:13px;">Telah terima dari: <b>'+nama+'</b></p>';
+                    html += '<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:12px;"><thead style="background:#f2f2f2;"><tr><th style="padding:10px; border:1px solid #ddd; text-align:left;">Keterangan</th><th style="padding:10px; border:1px solid #ddd; text-align:right; width:130px;">Biaya</th></tr></thead><tbody>'+tableRows+'</tbody><tfoot style="font-weight:bold; background:#f2f2f2;"><tr><td style="padding:10px; border:1px solid #ddd;">TOTAL AKHIR</td><td style="padding:10px; border:1px solid #ddd; text-align:right; color:#1e4d2b;">Rp '+total+'</td></tr></tfoot></table>';
+                    html += '<div style="margin-top:40px; display:flex; justify-content:space-between; font-size:12px;"><div style="text-align:center; width:150px;"><p>Orang Tua</p><br><br><br><p>( ..................... )</p></div><div style="text-align:center; width:150px;"><p>Admin Pondok</p><br><br><p style="color:#1e4d2b; font-weight:bold; border:1px solid #1e4d2b; padding:2px 5px; display:inline-block;">LUNAS</p></div></div></div>';
                     
                     html += '<div class="p-4 bg-light d-flex flex-column gap-2 border-top"><button onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\')" class="btn btn-danger fw-bold"><i class="fas fa-file-pdf me-2"></i>DOWNLOAD PDF</button><a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold text-center"><i class="fab fa-whatsapp me-2"></i>KIRIM WHATSAPP</a><button class="btn btn-secondary" onclick="location.reload()">TUTUP</button></div>';
                     
