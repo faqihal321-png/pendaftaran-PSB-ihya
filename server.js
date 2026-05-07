@@ -63,15 +63,7 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
         const data = readData();
         const config = readConfig();
         const getFileName = (n) => (req.files && req.files[n]) ? req.files[n][0].filename : null;
-        
-        const opsiWaktu = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric', 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        };
+        const opsiWaktu = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
         const waktuSkrg = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta", ...opsiWaktu });
 
         const baru = {
@@ -80,12 +72,7 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
             status: 'Aktif',
             tahunDaftar: config.tahunAktif,
             pembayaran: {},
-            berkas: { 
-                ktp: getFileName('ktp'), 
-                ijazah: getFileName('ijazah'), 
-                foto: getFileName('foto'), 
-                kk: getFileName('kk') 
-            },
+            berkas: { ktp: getFileName('ktp'), ijazah: getFileName('ijazah'), foto: getFileName('foto'), kk: getFileName('kk') },
             tanggal: waktuSkrg 
         };
         data.push(baru);
@@ -212,7 +199,7 @@ app.get('/admin', (req, res) => {
             } else { labelDaftar = p.tanggal; }
         }
 
-        return '<tr class="santri-row" data-name="'+p.nama.toLowerCase()+'">' +
+        return '<tr class="santri-row" data-name="'+p.nama.toLowerCase()+'" data-status="'+p.status+'">' +
             '<td class="text-center small">'+(index + 1)+'</td>' +
             '<td class="text-center"><img src="'+fotoUrl+'" style="width:40px; height:50px; object-fit:cover; border-radius:5px; border:1px solid #ddd;"></td>' +
             '<td><b>'+p.nama+'</b><br><small class="text-muted" style="font-size:0.7rem;">Daftar: '+labelDaftar+'</small></td>' +
@@ -231,20 +218,13 @@ app.get('/admin', (req, res) => {
         '</tr>';
     }).join('');
 
-    // --- LOGIKA REKAP TUNGGAKAN ---
     const rowsTunggakan = data.filter(p => p.status === 'Aktif').map(p => {
         let pMenunggak = months.filter(m => !(p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif]['p-' + m]));
         let mMenunggak = months.filter(m => !(p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif]['m-' + m]));
-        
         if (pMenunggak.length > 0 || mMenunggak.length > 0) {
             const badgeP = pMenunggak.length > 0 ? '<span class="badge bg-danger mb-1 me-1">Pondok: '+pMenunggak.join(', ')+'</span>' : '<span class="badge bg-success mb-1">Pondok Lunas</span>';
             const badgeM = mMenunggak.length > 0 ? '<span class="badge bg-primary mb-1">Makan: '+mMenunggak.join(', ')+'</span>' : '<span class="badge bg-success mb-1">Makan Lunas</span>';
-            
-            return '<tr>' +
-                '<td><b>'+p.nama+'</b></td>' +
-                '<td>'+badgeP+'<br>'+badgeM+'</td>' +
-                '<td><button class="btn btn-sm btn-outline-success fw-bold" onclick="kePembayaran(\''+p.nama.replace(/'/g, "\\'")+'\')">BAYAR</button></td>' +
-            '</tr>';
+            return '<tr><td><b>'+p.nama+'</b></td><td>'+badgeP+'<br>'+badgeM+'</td><td><button class="btn btn-sm btn-outline-success fw-bold" onclick="kePembayaran(\''+p.nama.replace(/'/g, "\\'")+'\')">BAYAR</button></td></tr>';
         }
         return null;
     }).filter(x => x !== null).join('');
@@ -255,37 +235,25 @@ app.get('/admin', (req, res) => {
             const matchY = p.tanggal.match(/\d{4}/);
             if (matchY) tahunDaftarAkurat = matchY[0];
         }
-
         const tahunDaftarInt = parseInt(tahunDaftarAkurat || "2025");
         const tahunAktifInt = parseInt(tahunAktif);
         const lunasLalu = months.every(m => (p.pembayaran[tahunLalu] || {})['p-'+m] && (p.pembayaran[tahunLalu] || {})['m-'+m]);
-        
         const isLocked = (tahunAktifInt > tahunDaftarInt) && !lunasLalu;
         const belumDaftar = tahunAktifInt < tahunDaftarInt;
         const isTidakAktif = p.status === 'Tidak Aktif';
 
         const createCheck = (prefix) => months.map(m => {
             const lunas = p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif][prefix + '-' + m];
-            return '<div class="col-6 mb-2">' +
-                '<div class="form-check p-1 border rounded '+(lunas ? 'bg-light border-success' : 'bg-white shadow-sm')+'">' +
+            return '<div class="col-6 mb-2"><div class="form-check p-1 border rounded '+(lunas ? 'bg-light border-success' : 'bg-white shadow-sm')+'">' +
                     '<input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="'+prefix+'-'+p.id+'-'+m+'" ' +
                         'data-id="'+prefix+'-'+m+'" data-price="'+(prefix === 'p' ? config.biayaPondok : config.biayaMakan)+'" ' +
                         (lunas ? 'checked disabled' : '')+' onchange="hitungTotal('+p.id+')">' +
-                    '<label class="form-check-label fw-bold small '+(lunas ? 'text-success' : '')+'">'+m+'</label>' +
-                '</div>' +
-            '</div>';
+                    '<label class="form-check-label fw-bold small '+(lunas ? 'text-success' : '')+'">'+m+'</label></div></div>';
         }).join('');
 
         let bodyHTML = '<div class="row g-3 '+(isLocked ? 'pointer-events-none' : '')+'">' +
-            '<div class="col-md-6 border-end text-center">' +
-                '<p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok</p>' +
-                '<div class="row gx-1">'+createCheck('p')+'</div>' +
-            '</div>' +
-            '<div class="col-md-6 text-center">' +
-                '<p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan</p>' +
-                '<div class="row gx-1">'+createCheck('m')+'</div>' +
-            '</div>' +
-        '</div>';
+            '<div class="col-md-6 border-end text-center"><p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Pondok</p><div class="row gx-1">'+createCheck('p')+'</div></div>' +
+            '<div class="col-md-6 text-center"><p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Makan</p><div class="row gx-1">'+createCheck('m')+'</div></div></div>';
 
         if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
         if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR TAHUN INI</h5></div>';
@@ -295,14 +263,11 @@ app.get('/admin', (req, res) => {
                 '<div class="card-header bg-success text-white py-2 d-flex justify-content-between align-items-center">' +
                     '<h6 class="mb-0 fw-bold"><i class="fas fa-user-circle me-1"></i> '+p.nama+' ('+tahunAktif+')</h6>' +
                     (isTidakAktif ? '<span class="badge bg-danger">NON-AKTIF</span>' : (isLocked ? '<span class="badge bg-warning text-dark fw-bold">LUNASI '+tahunLalu+' DULU</span>' : '<span class="badge bg-white text-success small">Daftar: '+tahunDaftarAkurat+'</span>')) +
-                '</div>' +
-                '<div class="card-body p-3">'+bodyHTML+'</div>' +
+                '</div><div class="card-body p-3">'+bodyHTML+'</div>' +
                 '<div class="card-footer bg-light border-0 d-flex justify-content-between align-items-center py-3">' +
                     '<div><span class="text-muted small fw-bold text-uppercase">Total Tagihan:</span><h4 class="text-success fw-bold mb-0">Rp <span id="total-'+p.id+'">0</span></h4></div>' +
                     '<button class="btn btn-success fw-bold px-4 py-2 rounded-3 shadow-sm" onclick="prosesBayar('+p.id+')"><i class="fas fa-check-circle me-2"></i> KONFIRMASI BAYAR</button>' +
-                '</div>' +
-            '</div>' +
-        '</div>';
+                '</div></div></div>';
     }).join('');
 
     res.send(`
@@ -313,7 +278,6 @@ app.get('/admin', (req, res) => {
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
             <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
             <title>Panel Admin PSB</title>
             <style>
                 body { background-color: #f4f7f6; font-family: sans-serif; }
@@ -322,7 +286,6 @@ app.get('/admin', (req, res) => {
                 .sidebar .nav-link.active { background: rgba(255,255,255,0.15) !important; color: white; }
                 .main-content { width: 100%; padding: 25px; }
                 .stat-card { border: none; border-radius: 15px; color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-                .pointer-events-none { pointer-events: none; }
                 #hint-bayar { padding: 80px 20px; color: #888; text-align: center; }
             </style>
         </head>
@@ -352,61 +315,48 @@ app.get('/admin', (req, res) => {
                             </div>
                         </div>
                         <div class="tab-pane fade" id="v-santri">
-                            <div class="d-flex justify-content-between mb-3 align-items-center"><h4 class="fw-bold text-success text-uppercase">Data Santri</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari nama..." onkeyup="filterT('santri-row', this.value, false)"></div>
-                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
+                            <div class="d-flex justify-content-between mb-3 align-items-center">
+                                <h4 class="fw-bold text-success text-uppercase">Data Santri</h4>
+                                <div class="d-flex gap-2 w-50 justify-content-end">
+                                    <select id="filter-status" class="form-select form-select-sm w-25 rounded-pill border-success fw-bold" onchange="filterDataSantri()">
+                                        <option value="Semua">🔍 Semua</option>
+                                        <option value="Aktif">🟢 Aktif</option>
+                                        <option value="Tidak Aktif">🔴 Tidak Aktif</option>
+                                    </select>
+                                    <input id="cari-santri" class="form-control w-50 rounded-pill shadow-sm" placeholder="Cari nama..." onkeyup="filterDataSantri()">
+                                </div>
+                            </div>
+                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="santri-body">${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
                         </div>
                         <div class="tab-pane fade" id="v-tunggakan">
                             <h4 class="fw-bold text-danger text-uppercase mb-4">Daftar Santri Belum Lunas (${tahunAktif})</h4>
-                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white">
-                                <table class="table table-hover align-middle">
-                                    <thead class="table-light"><tr><th>Nama</th><th>Bulan Belum Dibayar</th><th>Aksi</th></tr></thead>
-                                    <tbody>${rowsTunggakan || '<tr><td colspan="3" class="text-center py-4">Semua santri lunas!</td></tr>'}</tbody>
-                                </table>
-                            </div>
+                            <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>Nama</th><th>Bulan Belum Dibayar</th><th>Aksi</th></tr></thead><tbody>${rowsTunggakan || '<tr><td colspan="3" class="text-center py-4">Semua santri lunas!</td></tr>'}</tbody></table></div>
                         </div>
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4 align-items-center">
-                                <h4 class="fw-bold text-success text-uppercase mb-0">Pembayaran</h4>
-                                <div class="d-flex gap-2 w-50 justify-content-end">
-                                    <div class="input-group input-group-sm" style="width: 180px;">
-                                        <span class="input-group-text bg-success text-white border-success small fw-bold">Tahun</span>
-                                        <input type="text" id="cfgT" class="form-control border-success text-center fw-bold" value="${tahunAktif}">
-                                        <button class="btn btn-success" onclick="simpanC()"><i class="fas fa-save"></i></button>
-                                    </div>
-                                    <input id="cari-bayar" class="form-control w-50 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)">
-                                </div>
-                            </div>
-                            <div id="payment-container">
-                                <div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri untuk mengelola pembayaran.</h5></div>
-                                ${cardsBayar}
-                            </div>
+                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase mb-0">Pembayaran</h4><div class="d-flex gap-2 w-50 justify-content-end"><div class="input-group input-group-sm" style="width: 180px;"><span class="input-group-text bg-success text-white border-success small fw-bold">Tahun</span><input type="text" id="cfgT" class="form-control border-success text-center fw-bold" value="${tahunAktif}"><button class="btn btn-success" onclick="simpanC()"><i class="fas fa-save"></i></button></div><input id="cari-bayar" class="form-control w-50 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div></div>
+                            <div id="payment-container"><div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri...</h5></div>${cardsBayar}</div>
                         </div>
-                        <div class="tab-pane fade" id="v-set">
-                            <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4>
-                            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;">
-                                <div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
-                                <div class="mb-4"><label class="form-label fw-bold small">Biaya Makan (Rp)</label><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div>
-                                <button class="btn btn-success fw-bold w-100" onclick="simpanC()">SIMPAN PERUBAHAN</button>
-                            </div>
-                        </div>
+                        <div class="tab-pane fade" id="v-set"><h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4><div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;"><div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div><div class="mb-4"><label class="form-label fw-bold small">Biaya Makan (Rp)</label><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div><button class="btn btn-success fw-bold w-100" onclick="simpanC()">SIMPAN PERUBAHAN</button></div></div>
                     </div>
                 </div>
             </div>
-            
             <div class="modal fade" id="mD" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden"><div class="modal-body p-4" id="isiM"></div></div></div></div>
             <div class="modal fade" id="mKwitansi" data-bs-backdrop="static" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 rounded-4 overflow-hidden shadow-lg"><div class="modal-body p-4" id="isiKwitansi"></div></div></div></div>
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
                 const DB_SANTRI = ${JSON.stringify(data)};
+                const THN_AKTIF = "${tahunAktif}";
 
-                function downloadPDF(nama) {
-                    const element = document.getElementById('pdf-content');
-                    const opt = {
-                        margin: 10, filename: 'Kwitansi_' + nama + '.pdf', image: { type: 'jpeg', quality: 0.98 },
-                        html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                    };
-                    html2pdf().set(opt).from(element).save();
+                function filterDataSantri() {
+                    const query = document.getElementById('cari-santri').value.toLowerCase().trim();
+                    const status = document.getElementById('filter-status').value;
+                    const rows = document.getElementsByClassName('santri-row');
+                    for (let r of rows) {
+                        const matchName = r.getAttribute('data-name').includes(query);
+                        const matchStatus = (status === "Semua") || (r.getAttribute('data-status') === status);
+                        r.style.display = (matchName && matchStatus) ? '' : 'none';
+                    }
                 }
 
                 function filterT(c, q, strict) {
@@ -416,11 +366,15 @@ app.get('/admin', (req, res) => {
                     if (strict) {
                         if (query === "") { if(hint) hint.style.display = 'block'; for (let r of rows) r.style.display = 'none'; }
                         else { if(hint) hint.style.display = 'none'; for (let r of rows) { r.style.display = (r.getAttribute('data-name')||'').includes(query) ? '' : 'none'; } }
-                    } else {
-                        for (let r of rows) { r.style.display = (r.getAttribute('data-name')||'').includes(query) ? '' : 'none'; }
-                    }
+                    } else { for (let r of rows) { r.style.display = (r.getAttribute('data-name')||'').includes(query) ? '' : 'none'; } }
                 }
-                
+
+                function downloadPDF(nama) {
+                    const element = document.getElementById('pdf-content');
+                    const opt = { margin: 10, filename: 'Kwitansi_'+nama+'.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+                    html2pdf().set(opt).from(element).save();
+                }
+
                 function hitungTotal(id) {
                     const card = document.getElementById('card-' + id);
                     const checks = card.querySelectorAll('.pay-check:checked:not(:disabled)');
@@ -428,7 +382,7 @@ app.get('/admin', (req, res) => {
                     checks.forEach(c => { total += parseInt(c.getAttribute('data-price').replace(/\\./g, '')); });
                     document.getElementById('total-' + id).innerText = total.toLocaleString('id-ID');
                 }
-                
+
                 function tampilkanKwitansi(nama, total, rincian, wa) {
                     let cleanWa = wa ? wa.replace(/^0/, '62') : '';
                     let tableRows = ''; let waRincian = '';
@@ -437,20 +391,9 @@ app.get('/admin', (req, res) => {
                         waRincian += '- ' + item.ket + ': Rp ' + parseInt(item.hrg).toLocaleString('id-ID') + '%0A';
                     });
                     let msg = 'Assalamu%27alaikum.%0APembayaran%20santri%20*'+encodeURIComponent(nama)+'*%20sebesar%20*Rp%20'+total+'*%20berhasil%20diterima.%0A%0A*Rincian%3A*%0A'+waRincian+'%0A*TOTAL%3A%20Rp%20'+total+'*%0ATerima%20kasih.';
-                    let waLink = 'https://wa.me/' + cleanWa + '?text=' + msg;
-
-                    var html = '<div id="pdf-content" style="padding:30px; font-family:sans-serif;">';
-                    html += '<div style="text-align:center; border-bottom:2px solid #1e4d2b; padding-bottom:10px; margin-bottom:20px;"><h3 style="margin:0; color:#1e4d2b;">KWITANSI PEMBAYARAN</h3><p style="margin:0; font-size:12px;">Pesantren PSB Ihya</p></div>';
-                    html += '<p style="margin-bottom:15px;">Telah terima dari: <b>'+nama+'</b></p>';
-                    html += '<table style="width:100%; border-collapse:collapse; margin-bottom:20px;"><thead style="background:#f2f2f2;"><tr><th style="padding:10px; border:1px solid #ddd; text-align:left;">Keterangan</th><th style="padding:10px; border:1px solid #ddd; text-align:right; width:150px;">Biaya</th></tr></thead>';
-                    html += '<tbody>'+tableRows+'</tbody>';
-                    html += '<tfoot style="font-weight:bold; background:#f2f2f2;"><tr><td style="padding:10px; border:1px solid #ddd;">TOTAL AKHIR</td><td style="padding:10px; border:1px solid #ddd; text-align:right; color:#1e4d2b;">Rp '+total+'</td></tr></tfoot></table>';
-                    html += '<div style="margin-top:40px; display:flex; justify-content:space-between;"><div style="text-align:center; width:150px;"><p style="font-size:12px;">Orang Tua</p><br><br><p>( ..................... )</p></div><div style="text-align:center; width:150px;"><p style="font-size:12px;">Admin Pondok</p><br><br><p style="color:#1e4d2b; font-weight:bold; border:1px solid #1e4d2b; padding:2px 5px;">LUNAS</p></div></div></div>';
-                    
-                    html += '<div class="d-flex flex-column gap-2 mt-4">';
-                    html += '<button class="btn btn-danger fw-bold" onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\")"><i class="fas fa-file-pdf me-2"></i>Download PDF</button>';
-                    html += '<a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold text-center"><i class="fab fa-whatsapp me-2"></i>Kirim WhatsApp</a>';
-                    html += '<button class="btn btn-light border" onclick="location.reload()">Tutup</button></div>';
+                    let waLink = 'https://wa.me/'+cleanWa+'?text='+msg;
+                    let html = '<div id="pdf-content" style="padding:30px; font-family:sans-serif;"><div style="text-align:center; border-bottom:2px solid #1e4d2b; padding-bottom:10px; margin-bottom:20px;"><h3 style="margin:0; color:#1e4d2b;">KWITANSI PEMBAYARAN</h3><p style="margin:0; font-size:12px;">Pesantren PSB Ihya</p></div><p>Telah terima dari: <b>'+nama+'</b></p><table style="width:100%; border-collapse:collapse; margin-bottom:20px;"><thead style="background:#f2f2f2;"><tr><th style="padding:10px; border:1px solid #ddd; text-align:left;">Keterangan</th><th style="padding:10px; border:1px solid #ddd; text-align:right;">Biaya</th></tr></thead><tbody>'+tableRows+'</tbody><tfoot style="font-weight:bold; background:#f2f2f2;"><tr><td style="padding:10px; border:1px solid #ddd;">TOTAL AKHIR</td><td style="padding:10px; border:1px solid #ddd; text-align:right; color:#1e4d2b;">Rp '+total+'</td></tr></tfoot></table><div style="margin-top:40px; display:flex; justify-content:space-between;"><div style="text-align:center; width:150px;"><p style="font-size:12px;">Orang Tua</p><br><br><p>( ..................... )</p></div><div style="text-align:center; width:150px;"><p style="font-size:12px;">Admin Pondok</p><br><br><p style="color:#1e4d2b; font-weight:bold; border:1px solid #1e4d2b; padding:2px 5px;">LUNAS</p></div></div></div>';
+                    html += '<div class="d-flex flex-column gap-2 mt-4"><button class="btn btn-danger fw-bold" onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\")"><i class="fas fa-file-pdf me-2"></i>Download PDF</button><a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold text-center"><i class="fab fa-whatsapp me-2"></i>Kirim WhatsApp</a><button class="btn btn-light border" onclick="location.reload()">Tutup</button></div>';
                     document.getElementById('isiKwitansi').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mKwitansi')).show();
                 }
@@ -471,7 +414,7 @@ app.get('/admin', (req, res) => {
                         .then(res => res.json()).then(d => { if(d.success) tampilkanKwitansi(s.nama, total, rincian, s.whatsapp); });
                     }
                 }
-                
+
                 function kePembayaran(nama) {
                     const tabTrigger = new bootstrap.Tab(document.querySelector('[data-bs-target="#v-bayar"]'));
                     tabTrigger.show();
@@ -482,52 +425,24 @@ app.get('/admin', (req, res) => {
 
                 function lihatDetail(id) {
                     const d = DB_SANTRI.find(x => x.id == id);
-                    let html = '<div id="detail-view">';
-                    html += '<div class="d-flex align-items-center mb-4"><img src="/uploads/'+(d.berkas.foto||'')+'" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;"><div><h3 class="fw-bold text-success mb-0">'+d.nama+'</h3><p class="text-muted small">'+(d.jenjang||'-')+'</p></div></div>';
+                    let html = '<div id="detail-view"><div class="d-flex align-items-center mb-4"><img src="/uploads/'+(d.berkas.foto||'')+'" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;"><div><h3 class="fw-bold text-success mb-0">'+d.nama+'</h3><p class="text-muted small">'+(d.jenjang||'-')+'</p></div></div>';
                     html += '<div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6><p class="small"><b>NISN:</b> '+(d.nisn||'-')+'<br><b>NIK:</b> '+(d.nik||'-')+'<br><b>Tgl Daftar:</b> '+(d.tanggal||d.tahunDaftar||'-')+'<br><b>Alamat:</b> '+(d.alamat||'-')+'</p></div>';
                     html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small"><b>Ayah:</b> '+d.namaAyah+'<br><b>Ibu:</b> '+(d.namaIbu||'-')+'<br><b>WA:</b> '+d.whatsapp+'</p></div></div>';
                     html += '<div class="mt-4 pt-3 border-top d-flex gap-2"><button class="btn btn-warning fw-bold text-white px-4" onclick="modeEdit('+id+')"><i class="fas fa-edit me-2"></i>EDIT DATA</button><button class="btn btn-outline-danger fw-bold px-4" onclick="hapusSantri('+id+', \\''+d.nama.replace(/'/g, "\\\\'")+'\\')"><i class="fas fa-trash-alt me-2"></i>HAPUS</button><button class="btn btn-secondary px-4 ms-auto" data-bs-dismiss="modal">TUTUP</button></div></div>';
-                    
-                    html += '<div id="edit-view" style="display:none;"><h4 class="fw-bold text-success mb-4">EDIT DATA SANTRI</h4><div class="row g-3">';
-                    html += '<div class="col-md-6"><label class="small fw-bold">Nama Lengkap</label><input id="enama" class="form-control" value="'+d.nama+'"></div>';
-                    html += '<div class="col-md-6"><label class="small fw-bold">Jenjang</label><select id="ejenjang" class="form-select"><option value="SMP/MTs" '+(d.jenjang=="SMP/MTs"?"selected":"")+'>SMP/MTs</option><option value="SMA/MA" '+(d.jenjang=="SMA/MA"?"selected":"")+'>SMA/MA</option></select></div>';
-                    html += '<div class="col-md-6"><label class="small fw-bold">NISN</label><input id="enisn" class="form-control" value="'+(d.nisn||'')+'"></div>';
-                    html += '<div class="col-md-6"><label class="small fw-bold">NIK</label><input id="enik" class="form-control" value="'+(d.nik||'')+'"></div>';
-                    html += '<div class="col-md-12"><label class="small fw-bold">Alamat</label><input id="ealamat" class="form-control" value="'+(d.alamat||'')+'"></div>';
-                    html += '<div class="col-md-6"><label class="small fw-bold">Nama Ayah</label><input id="eayah" class="form-control" value="'+d.namaAyah+'"></div>';
-                    html += '<div class="col-md-6"><label class="small fw-bold">WhatsApp</label><input id="ewa" class="form-control" value="'+d.whatsapp+'"></div>';
-                    html += '</div><div class="mt-4 pt-3 border-top d-flex gap-2"><button class="btn btn-success fw-bold px-4" onclick="simpanEdit('+id+')">SIMPAN PERUBAHAN</button><button class="btn btn-light border px-4" onclick="modeDetail()">BATAL</button></div></div>';
+                    html += '<div id="edit-view" style="display:none;"><h4 class="fw-bold text-success mb-4">EDIT DATA SANTRI</h4><div class="row g-3"><div class="col-md-6"><label class="small fw-bold">Nama Lengkap</label><input id="enama" class="form-control" value="'+d.nama+'"></div><div class="col-md-6"><label class="small fw-bold">Jenjang</label><select id="ejenjang" class="form-select"><option value="SMP/MTs" '+(d.jenjang=="SMP/MTs"?"selected":"")+'>SMP/MTs</option><option value="SMA/MA" '+(d.jenjang=="SMA/MA"?"selected":"")+'>SMA/MA</option></select></div><div class="col-md-6"><label class="small fw-bold">NISN</label><input id="enisn" class="form-control" value="'+(d.nisn||'')+'"></div><div class="col-md-6"><label class="small fw-bold">NIK</label><input id="enik" class="form-control" value="'+(d.nik||'')+'"></div><div class="col-md-12"><label class="small fw-bold">Alamat</label><input id="ealamat" class="form-control" value="'+(d.alamat||'')+'"></div><div class="col-md-6"><label class="small fw-bold">Nama Ayah</label><input id="eayah" class="form-control" value="'+d.namaAyah+'"></div><div class="col-md-6"><label class="small fw-bold">WhatsApp</label><input id="ewa" class="form-control" value="'+d.whatsapp+'"></div></div><div class="mt-4 pt-3 border-top d-flex gap-2"><button class="btn btn-success fw-bold px-4" onclick="simpanEdit('+id+')">SIMPAN PERUBAHAN</button><button class="btn btn-light border px-4" onclick="modeDetail()">BATAL</button></div></div>';
                     document.getElementById('isiM').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mD')).show();
                 }
 
                 function modeEdit() { document.getElementById('detail-view').style.display = 'none'; document.getElementById('edit-view').style.display = 'block'; }
                 function modeDetail() { document.getElementById('detail-view').style.display = 'block'; document.getElementById('edit-view').style.display = 'none'; }
-
                 function simpanEdit(id) {
-                    const payload = {
-                        id, nama: document.getElementById('enama').value, jenjang: document.getElementById('ejenjang').value,
-                        nisn: document.getElementById('enisn').value, nik: document.getElementById('enik').value,
-                        alamat: document.getElementById('ealamat').value, namaAyah: document.getElementById('eayah').value,
-                        whatsapp: document.getElementById('ewa').value
-                    };
-                    fetch('/admin/edit-santri', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
-                    .then(res => res.json()).then(d => { if(d.success) location.reload(); });
+                    const payload = { id, nama: document.getElementById('enama').value, jenjang: document.getElementById('ejenjang').value, nisn: document.getElementById('enisn').value, nik: document.getElementById('enik').value, alamat: document.getElementById('ealamat').value, namaAyah: document.getElementById('eayah').value, whatsapp: document.getElementById('ewa').value };
+                    fetch('/admin/edit-santri', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }).then(res => res.json()).then(d => { if(d.success) location.reload(); });
                 }
-
-                function hapusSantri(id, nama) {
-                    if(confirm("Yakin ingin menghapus data " + nama + "?")) {
-                        fetch('/admin/hapus-santri', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id }) })
-                        .then(res => res.json()).then(d => { if(d.success) location.reload(); });
-                    }
-                }
-
+                function hapusSantri(id, nama) { if(confirm("Yakin ingin menghapus data " + nama + "?")) { fetch('/admin/hapus-santri', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id }) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); } }
                 function updateStatus(id, s) { fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
-                function simpanC() { 
-                    fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) })
-                    .then(res => res.json()).then(d => { if(d.success) location.reload(); }); 
-                }
+                function simpanC() { fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
             </script>
         </body></html>`);
 });
