@@ -43,13 +43,16 @@ const readConfig = () => {
                 biayaB3: "200.000", // Infaq
                 biayaPondok: "50.000", 
                 biayaMakan: "400.000", 
+                biayaE1: "500.000", // Operasional 1 Tahun
+                biayaE2: "200.000", // PHBI
+                biayaE3: "100.000", // Kesehatan 1 Tahun
                 tahunAktif: "2026" 
             };
             fs.writeFileSync(CONFIG_FILE, JSON.stringify(def));
             return def;
         }
         return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-    } catch (e) { return { biayaA: "100.000", biayaB1: "200.000", biayaB2: "100.000", biayaB3: "200.000", biayaPondok: "0", biayaMakan: "0", tahunAktif: "2026" }; }
+    } catch (e) { return { biayaA: "100.000", biayaB1: "200.000", biayaB2: "100.000", biayaB3: "200.000", biayaPondok: "0", biayaMakan: "0", biayaE1: "500.000", biayaE2: "200.000", biayaE3: "100.000", tahunAktif: "2026" }; }
 };
 const saveConfig = (cfg) => fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
 
@@ -255,7 +258,6 @@ app.get('/admin', (req, res) => {
         const isTidakAktif = p.status === 'Tidak Aktif';
         const isBaru = p.tahunDaftar === tahunAktif; 
 
-        // Checkbox khusus Poin A & B disusun menyamping ke bawah (col-12 agar full baris)
         const createCheckPoinList = (id, label, price) => {
             const lunas = p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif][id];
             return '<div class="col-12 mb-2"><div class="form-check p-2 border rounded '+(lunas ? 'bg-light border-success' : 'bg-white shadow-sm')+'">' +
@@ -293,10 +295,18 @@ app.get('/admin', (req, res) => {
                 '</div>';
         }
 
+        let poinEHtml = '<div class="row gx-2 mt-2 border-top pt-3">' +
+            '<p class="fw-bold text-secondary small text-uppercase mb-3 w-100"><i class="fas fa-calendar-check me-2"></i>Poin E (Tahunan)</p>' +
+            '<div class="col-md-4">' + createCheckPoinList('poin-e1', 'Operasional 1 Thn', config.biayaE1 || '500.000') + '</div>' +
+            '<div class="col-md-4">' + createCheckPoinList('poin-e2', 'PHBI', config.biayaE2 || '200.000') + '</div>' +
+            '<div class="col-md-4">' + createCheckPoinList('poin-e3', 'Kesehatan 1 Thn', config.biayaE3 || '100.000') + '</div>' +
+            '</div>';
+
         let bodyHTML = '<div class="row g-3 '+(isLocked ? 'pointer-events-none' : '')+'">' +
             '<div class="col-12 text-start">' + poinABHtml + '</div>' +
             '<div class="col-md-6 border-end text-center"><p class="fw-bold text-success border-bottom pb-1 mb-2 small text-uppercase">Poin C (Bulanan Pondok)</p><div class="row gx-1">'+createCheck('p')+'</div></div>' +
-            '<div class="col-md-6 text-center"><p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Poin D (Bulanan Makan)</p><div class="row gx-1">'+createCheck('m')+'</div></div></div>';
+            '<div class="col-md-6 text-center"><p class="fw-bold text-primary border-bottom pb-1 mb-2 small text-uppercase">Poin D (Bulanan Makan)</p><div class="row gx-1">'+createCheck('m')+'</div></div>' +
+            '<div class="col-12 text-start">' + poinEHtml + '</div></div>';
 
         if (isTidakAktif) bodyHTML = '<div class="py-5 text-center"><h5 class="text-danger fw-bold">SANTRI TIDAK AKTIF</h5></div>';
         if (belumDaftar) bodyHTML = '<div class="py-5 text-center"><h5 class="text-muted fw-bold">BELUM MENDAFTAR TAHUN INI</h5></div>';
@@ -405,6 +415,11 @@ app.get('/admin', (req, res) => {
                                 <hr class="opacity-25">
                                 <div class="mb-3"><label class="form-label fw-bold small text-muted">Poin C</label><div class="input-group"><span class="input-group-text bg-light">Bulanan Pondok</span><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div></div>
                                 <div class="mb-4"><label class="form-label fw-bold small text-muted">Poin D</label><div class="input-group"><span class="input-group-text bg-light">Bulanan Makan</span><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div></div>
+                                <hr class="opacity-25">
+                                <label class="form-label fw-bold small text-muted">Poin E (Tahunan)</label>
+                                <div class="mb-2"><div class="input-group"><span class="input-group-text bg-light" style="width: 150px;">Operasional 1 Thn</span><input type="text" id="cfgE1" class="form-control" value="${config.biayaE1 || '500.000'}"></div></div>
+                                <div class="mb-2"><div class="input-group"><span class="input-group-text bg-light" style="width: 150px;">PHBI</span><input type="text" id="cfgE2" class="form-control" value="${config.biayaE2 || '200.000'}"></div></div>
+                                <div class="mb-4"><div class="input-group"><span class="input-group-text bg-light" style="width: 150px;">Kesehatan 1 Thn</span><input type="text" id="cfgE3" class="form-control" value="${config.biayaE3 || '100.000'}"></div></div>
                                 <button class="btn btn-success fw-bold w-100 shadow-sm" onclick="simpanC()">SIMPAN PERUBAHAN</button>
                             </div>
                         </div>
@@ -545,7 +560,10 @@ app.get('/admin', (req, res) => {
                         biayaB2: document.getElementById('cfgB2') ? document.getElementById('cfgB2').value : "100.000",
                         biayaB3: document.getElementById('cfgB3') ? document.getElementById('cfgB3').value : "200.000",
                         biayaPondok: document.getElementById('cfgP') ? document.getElementById('cfgP').value : "${config.biayaPondok}", 
-                        biayaMakan: document.getElementById('cfgM') ? document.getElementById('cfgM').value : "${config.biayaMakan}"
+                        biayaMakan: document.getElementById('cfgM') ? document.getElementById('cfgM').value : "${config.biayaMakan}",
+                        biayaE1: document.getElementById('cfgE1') ? document.getElementById('cfgE1').value : "500.000",
+                        biayaE2: document.getElementById('cfgE2') ? document.getElementById('cfgE2').value : "200.000",
+                        biayaE3: document.getElementById('cfgE3') ? document.getElementById('cfgE3').value : "100.000"
                     };
                     fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) })
                     .then(res => res.json()).then(d => { if(d.success) location.reload(); }); 
