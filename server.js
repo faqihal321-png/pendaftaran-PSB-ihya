@@ -36,12 +36,20 @@ const saveData = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null
 const readConfig = () => {
     try {
         if (!fs.existsSync(CONFIG_FILE)) {
-            const def = { biayaA: "100.000", biayaB: "500.000", biayaPondok: "150.000", biayaMakan: "200.000", tahunAktif: "2026" };
+            const def = { 
+                biayaA: "100.000", 
+                biayaB1: "200.000", // Seragam
+                biayaB2: "100.000", // Kitab/Buku
+                biayaB3: "200.000", // Infaq
+                biayaPondok: "50.000", 
+                biayaMakan: "400.000", 
+                tahunAktif: "2026" 
+            };
             fs.writeFileSync(CONFIG_FILE, JSON.stringify(def));
             return def;
         }
         return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
-    } catch (e) { return { biayaA: "100.000", biayaB: "500.000", biayaPondok: "0", biayaMakan: "0", tahunAktif: "2026" }; }
+    } catch (e) { return { biayaA: "100.000", biayaB1: "200.000", biayaB2: "100.000", biayaB3: "200.000", biayaPondok: "0", biayaMakan: "0", tahunAktif: "2026" }; }
 };
 const saveConfig = (cfg) => fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
 
@@ -245,19 +253,18 @@ app.get('/admin', (req, res) => {
         const isLocked = (tahunAktifInt > tahunDaftarInt) && !lunasLalu;
         const belumDaftar = tahunAktifInt < tahunDaftarInt;
         const isTidakAktif = p.status === 'Tidak Aktif';
-        const isBaru = p.tahunDaftar === tahunAktif; // Untuk mendeteksi santri baru
+        const isBaru = p.tahunDaftar === tahunAktif; 
 
-        // Fungsi khusus checkbox Poin A & B
-        const createCheckPoinAB = (id, label, price) => {
+        // Checkbox khusus Poin A & B disusun menyamping ke bawah (col-12 agar full baris)
+        const createCheckPoinList = (id, label, price) => {
             const lunas = p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif][id];
-            return '<div class="col-md-6 mb-2"><div class="form-check p-2 border rounded '+(lunas ? 'bg-light border-success' : 'bg-white shadow-sm')+'">' +
-                    '<input class="form-check-input ms-1 me-1 pay-check" type="checkbox" id="'+id+'-'+p.id+'" ' +
+            return '<div class="col-12 mb-2"><div class="form-check p-2 border rounded '+(lunas ? 'bg-light border-success' : 'bg-white shadow-sm')+'">' +
+                    '<input class="form-check-input ms-1 me-2 pay-check" type="checkbox" id="'+id+'-'+p.id+'" ' +
                         'data-id="'+id+'" data-price="'+price+'" data-label="'+label+'" ' +
                         (lunas ? 'checked disabled' : '')+' onchange="hitungTotal('+p.id+')">' +
-                    '<label class="form-check-label fw-bold small '+(lunas ? 'text-success' : '')+'">'+label+'</label></div></div>';
+                    '<label class="form-check-label fw-bold small '+(lunas ? 'text-success' : '')+'">'+label+' <span class="badge bg-secondary ms-2 fw-normal">Rp '+price+'</span></label></div></div>';
         };
 
-        // Fungsi checkbox Poin C & D (12 Bulan)
         const createCheck = (prefix) => months.map(m => {
             const lunas = p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif][prefix + '-' + m];
             const labelText = prefix === 'p' ? 'Poin C (Pondok) ' + m : 'Poin D (Makan) ' + m;
@@ -271,10 +278,18 @@ app.get('/admin', (req, res) => {
 
         let poinABHtml = '';
         if (isBaru) {
-            poinABHtml = '<div class="row gx-2 mb-3 border-bottom pb-2">' +
-                '<p class="fw-bold text-success small text-uppercase mb-2 w-100">Registrasi Awal (Hanya Santri Baru)</p>' +
-                createCheckPoinAB('poin-a', 'Poin A (Pendaftaran)', config.biayaA || '100.000') +
-                createCheckPoinAB('poin-b', 'Poin B (Seragam, Kitab, Infaq)', config.biayaB || '500.000') +
+            poinABHtml = '<div class="row gx-2 mb-3 border-bottom pb-3">' +
+                '<p class="fw-bold text-success small text-uppercase mb-3 w-100"><i class="fas fa-file-invoice-dollar me-2"></i>Registrasi Awal (Khusus Santri Baru)</p>' +
+                '<div class="col-md-6">' +
+                    '<p class="small fw-bold text-muted mb-2 border-bottom pb-1">POIN A</p>' +
+                    createCheckPoinList('poin-a', 'Pendaftaran', config.biayaA || '100.000') +
+                '</div>' +
+                '<div class="col-md-6">' +
+                    '<p class="small fw-bold text-muted mb-2 border-bottom pb-1">POIN B</p>' +
+                    createCheckPoinList('poin-b1', 'Seragam', config.biayaB1 || '200.000') +
+                    createCheckPoinList('poin-b2', 'Paket Buku/Kitab', config.biayaB2 || '100.000') +
+                    createCheckPoinList('poin-b3', 'Infaq', config.biayaB3 || '200.000') +
+                '</div>' +
                 '</div>';
         }
 
@@ -378,12 +393,18 @@ app.get('/admin', (req, res) => {
                             <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase mb-0">Pembayaran</h4><div class="d-flex gap-2 w-50 justify-content-end"><div class="input-group input-group-sm shadow-sm" style="width: 180px;"><span class="input-group-text bg-success text-white border-success small fw-bold">Tahun</span><input type="text" id="cfgT" class="form-control border-success text-center fw-bold" value="${tahunAktif}"><button class="btn btn-success" onclick="simpanC()"><i class="fas fa-save"></i></button></div><input id="cari-bayar" class="form-control w-50 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div></div>
                             <div id="payment-container"><div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri...</h5></div>${cardsBayar}</div>
                         </div>
-                        <div class="tab-pane fade" id="v-set"><h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4>
-                            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;">
-                                <div class="mb-3"><label class="form-label fw-bold small">Poin A - Uang Pendaftaran (Rp)</label><input type="text" id="cfgA" class="form-control" value="${config.biayaA || '100.000'}"></div>
-                                <div class="mb-3"><label class="form-label fw-bold small">Poin B - Seragam, Buku, Infaq (Rp)</label><input type="text" id="cfgB" class="form-control" value="${config.biayaB || '500.000'}"></div>
-                                <div class="mb-3"><label class="form-label fw-bold small">Poin C - Bulanan Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
-                                <div class="mb-4"><label class="form-label fw-bold small">Poin D - Bulanan Makan (Rp)</label><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div>
+                        <div class="tab-pane fade" id="v-set">
+                            <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Biaya Rincian</h4>
+                            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 500px;">
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">Poin A</label><div class="input-group"><span class="input-group-text bg-light">Pendaftaran</span><input type="text" id="cfgA" class="form-control" value="${config.biayaA || '100.000'}"></div></div>
+                                <hr class="opacity-25">
+                                <label class="form-label fw-bold small text-muted">Poin B (Registrasi)</label>
+                                <div class="mb-2"><div class="input-group"><span class="input-group-text bg-light" style="width: 120px;">Seragam</span><input type="text" id="cfgB1" class="form-control" value="${config.biayaB1 || '200.000'}"></div></div>
+                                <div class="mb-2"><div class="input-group"><span class="input-group-text bg-light" style="width: 120px;">Kitab/Buku</span><input type="text" id="cfgB2" class="form-control" value="${config.biayaB2 || '100.000'}"></div></div>
+                                <div class="mb-3"><div class="input-group"><span class="input-group-text bg-light" style="width: 120px;">Infaq</span><input type="text" id="cfgB3" class="form-control" value="${config.biayaB3 || '200.000'}"></div></div>
+                                <hr class="opacity-25">
+                                <div class="mb-3"><label class="form-label fw-bold small text-muted">Poin C</label><div class="input-group"><span class="input-group-text bg-light">Bulanan Pondok</span><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div></div>
+                                <div class="mb-4"><label class="form-label fw-bold small text-muted">Poin D</label><div class="input-group"><span class="input-group-text bg-light">Bulanan Makan</span><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div></div>
                                 <button class="btn btn-success fw-bold w-100 shadow-sm" onclick="simpanC()">SIMPAN PERUBAHAN</button>
                             </div>
                         </div>
@@ -483,7 +504,7 @@ app.get('/admin', (req, res) => {
                         rincian.push({ ket: label, hrg: c.getAttribute('data-price').replace(/\\./g, '') });
                     });
                     if(confirm("Konfirmasi bayar Rp " + total + " untuk " + s.nama + "?")) {
-                        fetch('/admin/konfirmasi-bayar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ santriId: id, tahun: document.getElementById('cfgT').value, itemIds: itemIds }) })
+                        fetch('/admin/konfirmasi-bayar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ santriId: id, tahun: document.getElementById('cfgT') ? document.getElementById('cfgT').value : "${tahunAktif}", itemIds: itemIds }) })
                         .then(res => res.json()).then(d => { if(d.success) tampilkanKwitansi(s.nama, total, rincian, s.whatsapp); });
                     }
                 }
@@ -520,7 +541,9 @@ app.get('/admin', (req, res) => {
                     const payload = { 
                         tahunAktif: document.getElementById('cfgT') ? document.getElementById('cfgT').value : "${tahunAktif}", 
                         biayaA: document.getElementById('cfgA') ? document.getElementById('cfgA').value : "100.000",
-                        biayaB: document.getElementById('cfgB') ? document.getElementById('cfgB').value : "500.000",
+                        biayaB1: document.getElementById('cfgB1') ? document.getElementById('cfgB1').value : "200.000",
+                        biayaB2: document.getElementById('cfgB2') ? document.getElementById('cfgB2').value : "100.000",
+                        biayaB3: document.getElementById('cfgB3') ? document.getElementById('cfgB3').value : "200.000",
                         biayaPondok: document.getElementById('cfgP') ? document.getElementById('cfgP').value : "${config.biayaPondok}", 
                         biayaMakan: document.getElementById('cfgM') ? document.getElementById('cfgM').value : "${config.biayaMakan}"
                     };
