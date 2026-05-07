@@ -4,7 +4,6 @@ const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
 const session = require('express-session');
-const ExcelJS = require('exceljs');
 
 const app = express();
 
@@ -94,7 +93,6 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
     } catch (e) { res.status(500).send("Error: " + e.message); }
 });
 
-// --- FITUR BARU: EDIT & HAPUS SANTRI (SERVER SIDE) ---
 app.post('/admin/edit-santri', (req, res) => {
     if (!req.session.isLoggedIn) return res.status(403).json({ success: false });
     const { id, nama, jenjang, nisn, nik, alamat, namaAyah, whatsapp } = req.body;
@@ -210,9 +208,7 @@ app.get('/admin', (req, res) => {
             if (tglPart.length === 3) {
                 const bulanIndo = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
                 labelDaftar = bulanIndo[parseInt(tglPart[1])-1] + ' ' + tglPart[2];
-            } else {
-                labelDaftar = p.tanggal;
-            }
+            } else { labelDaftar = p.tanggal; }
         }
 
         return '<tr class="santri-row" data-name="'+p.nama.toLowerCase()+'">' +
@@ -342,7 +338,17 @@ app.get('/admin', (req, res) => {
                             <div class="card border-0 shadow-sm p-3 rounded-4 bg-white"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Foto</th><th>Nama</th><th>Jenjang</th><th>Berkas</th><th>Status</th><th>Aksi</th></tr></thead><tbody>${rowsSantri || '<tr><td colspan="7" class="text-center py-4">Kosong</td></tr>'}</tbody></table></div></div>
                         </div>
                         <div class="tab-pane fade" id="v-bayar">
-                            <div class="d-flex justify-content-between mb-4 align-items-center"><h4 class="fw-bold text-success text-uppercase">Ceklis Pembayaran ${tahunAktif}</h4><input class="form-control w-25 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)"></div>
+                            <div class="d-flex justify-content-between mb-4 align-items-center">
+                                <h4 class="fw-bold text-success text-uppercase mb-0">Pembayaran</h4>
+                                <div class="d-flex gap-2 w-50 justify-content-end">
+                                    <div class="input-group input-group-sm" style="width: 180px;">
+                                        <span class="input-group-text bg-success text-white border-success small fw-bold">Tahun</span>
+                                        <input type="text" id="cfgT" class="form-control border-success text-center fw-bold" value="${tahunAktif}">
+                                        <button class="btn btn-success" onclick="simpanC()"><i class="fas fa-save"></i></button>
+                                    </div>
+                                    <input class="form-control w-50 rounded-pill shadow-sm" placeholder="Cari santri..." onkeyup="filterT('bayar-row', this.value, true)">
+                                </div>
+                            </div>
                             <div id="payment-container">
                                 <div id="hint-bayar"><h5><i class="fas fa-search me-2"></i> Silakan cari nama santri untuk mengelola pembayaran.</h5></div>
                                 ${cardsBayar}
@@ -351,7 +357,6 @@ app.get('/admin', (req, res) => {
                         <div class="tab-pane fade" id="v-set">
                             <h4 class="fw-bold text-success mb-4 text-uppercase">Pengaturan Sistem</h4>
                             <div class="card border-0 shadow-sm p-4 rounded-4 bg-white" style="max-width: 450px;">
-                                <div class="mb-3"><label class="form-label fw-bold small">Tahun Ajaran Aktif</label><input type="text" id="cfgT" class="form-control" value="${tahunAktif}"></div>
                                 <div class="mb-3"><label class="form-label fw-bold small">Biaya Pondok (Rp)</label><input type="text" id="cfgP" class="form-control" value="${config.biayaPondok}"></div>
                                 <div class="mb-4"><label class="form-label fw-bold small">Biaya Makan (Rp)</label><input type="text" id="cfgM" class="form-control" value="${config.biayaMakan}"></div>
                                 <button class="btn btn-success fw-bold w-100" onclick="simpanC()">SIMPAN PERUBAHAN</button>
@@ -373,9 +378,7 @@ app.get('/admin', (req, res) => {
 
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
             <script>
-                // DATA GLOBAL UNTUK PENCARIAN STABIL
                 const DB_SANTRI = ${JSON.stringify(data)};
-                const THN_AKTIF = "${tahunAktif}";
 
                 function downloadPDF(nama) {
                     const element = document.getElementById('pdf-content');
@@ -447,12 +450,11 @@ app.get('/admin', (req, res) => {
                         rincian.push({ ket: (isP ? 'Bulanan Pondok' : 'Bulanan Makan') + ' ('+c.nextElementSibling.innerText+')', hrg: c.getAttribute('data-price').replace(/\\./g, '') });
                     });
                     if(confirm("Konfirmasi bayar Rp " + total + " untuk " + s.nama + "?")) {
-                        fetch('/admin/konfirmasi-bayar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ santriId: id, tahun: THN_AKTIF, itemIds: itemIds }) })
+                        fetch('/admin/konfirmasi-bayar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ santriId: id, tahun: document.getElementById('cfgT').value, itemIds: itemIds }) })
                         .then(res => res.json()).then(d => { if(d.success) tampilkanKwitansi(s.nama, total, rincian, s.whatsapp); });
                     }
                 }
                 
-                // FITUR EDIT & HAPUS (CLIENT SIDE)
                 function lihatDetail(id) {
                     const d = DB_SANTRI.find(x => x.id == id);
                     let html = '<div id="detail-view">';
@@ -464,7 +466,6 @@ app.get('/admin', (req, res) => {
                     html += '<button class="btn btn-outline-danger fw-bold px-4" onclick="hapusSantri('+id+', \\''+d.nama.replace(/'/g, "\\\\'")+'\\')"><i class="fas fa-trash-alt me-2"></i>HAPUS</button>';
                     html += '<button class="btn btn-secondary px-4 ms-auto" data-bs-dismiss="modal">TUTUP</button></div></div>';
                     
-                    // FORM EDIT (Hidden)
                     html += '<div id="edit-view" style="display:none;"><h4 class="fw-bold text-success mb-4">EDIT DATA SANTRI</h4><div class="row g-3">';
                     html += '<div class="col-md-6"><label class="small fw-bold">Nama Lengkap</label><input id="enama" class="form-control" value="'+d.nama+'"></div>';
                     html += '<div class="col-md-6"><label class="small fw-bold">Jenjang</label><select id="ejenjang" class="form-select"><option value="SMP/MTs" '+(d.jenjang=="SMP/MTs"?"selected":"")+'>SMP/MTs</option><option value="SMA/MA" '+(d.jenjang=="SMA/MA"?"selected":"")+'>SMA/MA</option></select></div>';
@@ -498,14 +499,26 @@ app.get('/admin', (req, res) => {
                 }
 
                 function hapusSantri(id, nama) {
-                    if(confirm("Yakin ingin menghapus data " + nama + "? Seluruh riwayat pembayaran juga akan terhapus.")) {
+                    if(confirm("Yakin ingin menghapus data " + nama + "?")) {
                         fetch('/admin/hapus-santri', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id }) })
                         .then(res => res.json()).then(d => { if(d.success) location.reload(); });
                     }
                 }
 
                 function updateStatus(id, s) { fetch('/admin/update-status', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, status: s}) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
-                function simpanC() { fetch('/admin/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ tahunAktif: document.getElementById('cfgT').value, biayaPondok: document.getElementById('cfgP').value, biayaMakan: document.getElementById('cfgM').value }) }).then(res => res.json()).then(d => { if(d.success) location.reload(); }); }
+                
+                function simpanC() { 
+                    fetch('/admin/update-config', { 
+                        method: 'POST', 
+                        headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify({ 
+                            tahunAktif: document.getElementById('cfgT').value, 
+                            biayaPondok: document.getElementById('cfgP').value, 
+                            biayaMakan: document.getElementById('cfgM').value 
+                        }) 
+                    })
+                    .then(res => res.json()).then(d => { if(d.success) location.reload(); }); 
+                }
             </script>
         </body></html>`);
 });
