@@ -404,7 +404,7 @@ app.get('/admin', (req, res) => {
                     // HTML AREA CETAK DENGAN KOP RESMI
                     let html = '<div id="pdf-area" style="padding:30px; font-family:sans-serif; color:#333; background:white;">';
                     html += '<div style="display:flex; align-items:center; border-bottom:3px double #1e4d2b; padding-bottom:15px; margin-bottom:20px;">';
-                    html += '<img src="/assets/logo.png" style="width:70px; height:70px; margin-right:20px;" onerror="this.src=\\'https://via.placeholder.com/70x70?text=LOGO\\' ">';
+                    html += '<img src="/assets/logo-pondok.png" style="width:70px; height:70px; margin-right:20px;" onerror="this.src=\\'https://via.placeholder.com/70x70?text=LOGO\\' ">';
                     html += '<div style="text-align:left;"><h3 style="margin:0; color:#1e4d2b; font-weight:bold; font-size:20px;">PONDOK PESANTREN IHYAUTH THOLIBIN</h3>';
                     html += '<p style="margin:0; font-size:13px;">Jl. Pasar Jumat, Semarang Jaya, Air Hitam, Lampung Barat</p></div></div>';
                     
