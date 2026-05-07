@@ -57,8 +57,9 @@ const readConfig = () => {
 const saveConfig = (cfg) => fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
 
 // --- MIDDLEWARE ---
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+// Limit dinaikkan agar file base64 PDF tidak terpotong
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
+app.use(bodyParser.json({ limit: '50mb' }));
 app.use('/uploads', express.static(UPLOAD_DIR));
 app.use('/assets', express.static(ASSETS_DIR));
 app.use(session({ secret: 'psb-pondok-2026', resave: false, saveUninitialized: true }));
@@ -92,6 +93,16 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
         saveData(data);
         res.send('<h2>Pendaftaran Berhasil!</h2><a href="/">Kembali</a>');
     } catch (e) { res.status(500).send("Error: " + e.message); }
+});
+
+// Endpoint Baru untuk menyimpan PDF dari client-side
+app.post('/admin/simpan-pdf', (req, res) => {
+    if (!req.session.isLoggedIn) return res.status(403).json({ success: false });
+    const { filename, pdfBase64 } = req.body;
+    const filePath = path.join(UPLOAD_DIR, filename);
+    const buffer = Buffer.from(pdfBase64, 'base64');
+    fs.writeFileSync(filePath, buffer);
+    res.json({ success: true, url: '/uploads/' + filename });
 });
 
 app.post('/admin/edit-santri', (req, res) => {
@@ -483,8 +494,6 @@ app.get('/admin', (req, res) => {
                         tableRows += '<tr><td style="padding:10px; border:1px solid #ddd;">'+item.ket+'</td><td style="padding:10px; border:1px solid #ddd; text-align:right;">Rp '+parseInt(item.hrg).toLocaleString('id-ID')+'</td></tr>';
                         waRincian += '- ' + item.ket + ': Rp ' + parseInt(item.hrg).toLocaleString('id-ID') + '%0A';
                     });
-                    let msg = 'Assalamu%27alaikum.%0APembayaran%20santri%20*'+encodeURIComponent(nama)+'*%20sebesar%20*Rp%20'+total+'*%20berhasil%20diterima.%0A%0A*Rincian%3A*%0A'+waRincian+'%0A*TOTAL%3A%20Rp%20'+total+'*%0ATerima%20kasih.';
-                    let waLink = 'https://wa.me/'+cleanWa+'?text='+msg;
                     
                     let html = '<div id="pdf-area" style="padding:30px; font-family:sans-serif; color:#333; background:white;">';
                     html += '<div style="display:flex; align-items:center; border-bottom:3px double #1e4d2b; padding-bottom:15px; margin-bottom:20px;">';
@@ -497,10 +506,59 @@ app.get('/admin', (req, res) => {
                     html += '<table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:12px;"><thead style="background:#f2f2f2;"><tr><th style="padding:10px; border:1px solid #ddd; text-align:left;">Keterangan</th><th style="padding:10px; border:1px solid #ddd; text-align:right; width:130px;">Biaya</th></tr></thead><tbody>'+tableRows+'</tbody><tfoot style="font-weight:bold; background:#f2f2f2;"><tr><td style="padding:10px; border:1px solid #ddd;">TOTAL AKHIR</td><td style="padding:10px; border:1px solid #ddd; text-align:right; color:#1e4d2b;">Rp '+total+'</td></tr></tfoot></table>';
                     html += '<div style="margin-top:40px; display:flex; justify-content:space-between; font-size:12px;"><div style="text-align:center; width:150px;"><p>Orang Tua</p><br><br><br><p>( ..................... )</p></div><div style="text-align:center; width:150px;"><p>Admin Pondok</p><br><br><p style="color:#1e4d2b; font-weight:bold; border:1px solid #1e4d2b; padding:2px 5px; display:inline-block;">LUNAS</p></div></div></div>';
                     
-                    html += '<div class="p-4 bg-light d-flex flex-column gap-2 border-top"><button onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\')" class="btn btn-danger fw-bold"><i class="fas fa-file-pdf me-2"></i>DOWNLOAD PDF</button><a href="'+waLink+'" target="_blank" class="btn btn-success fw-bold text-center"><i class="fab fa-whatsapp me-2"></i>KIRIM WHATSAPP</a><button class="btn btn-secondary" onclick="location.reload()">TUTUP</button></div>';
+                    html += '<div class="p-4 bg-light d-flex flex-column gap-2 border-top">';
+                    html += '<button onclick="downloadPDF(\\''+nama.replace(/'/g, "\\\\'")+'\\')" class="btn btn-danger fw-bold"><i class="fas fa-file-pdf me-2"></i>DOWNLOAD PDF</button>';
+                    html += '<button id="btn-wa-link" class="btn btn-success fw-bold text-center"><i class="fab fa-whatsapp me-2"></i>KIRIM WA (+ LINK PDF)</button>';
+                    html += '<button class="btn btn-secondary" onclick="location.reload()">TUTUP</button></div>';
                     
                     document.getElementById('isiKwitansi').innerHTML = html;
                     new bootstrap.Modal(document.getElementById('mKwitansi')).show();
+
+                    // Logika tombol WA + PDF
+                    document.getElementById('btn-wa-link').onclick = async () => {
+                        const btn = document.getElementById('btn-wa-link');
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Memproses PDF...';
+                        btn.disabled = true;
+
+                        try {
+                            const element = document.getElementById('pdf-area');
+                            const opt = { margin: 10, filename: 'temp.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+                            
+                            // Gunakan html2pdf untuk menghasilkan blob
+                            const worker = html2pdf().set(opt).from(element);
+                            const blob = await worker.output('blob');
+                            
+                            const reader = new FileReader();
+                            reader.readAsDataURL(blob);
+                            reader.onloadend = async () => {
+                                const base64data = reader.result.split(',')[1];
+                                const filename = 'Kwitansi_' + nama.replace(/ /g, '_') + '_' + Date.now() + '.pdf';
+                                
+                                const res = await fetch('/admin/simpan-pdf', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ filename, pdfBase64: base64data })
+                                });
+                                const result = await res.json();
+                                
+                                if (result.success) {
+                                    const fullUrl = window.location.origin + result.url;
+                                    let msg = 'Assalamu%27alaikum.%0APembayaran%20santri%20*'+encodeURIComponent(nama)+'*%20sebesar%20*Rp%20'+total+'*%20berhasil%20diterima.%0A%0A*Rincian%3A*%0A'+waRincian+'%0A*TOTAL%3A%20Rp%20'+total+'*%0A%0A*UNDUH KWITANSI PDF:*%0A'+encodeURIComponent(fullUrl)+'%0A%0ATerima%20kasih.';
+                                    window.open('https://wa.me/'+cleanWa+'?text='+msg, '_blank');
+                                    location.reload();
+                                } else {
+                                    alert('Gagal menyimpan PDF ke server.');
+                                }
+                            };
+                        } catch (error) {
+                            console.error('Error:', error);
+                            alert('Terjadi kesalahan saat memproses PDF.');
+                        } finally {
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                        }
+                    };
                 }
 
                 function prosesBayar(id) {
