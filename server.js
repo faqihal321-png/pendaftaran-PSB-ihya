@@ -276,6 +276,19 @@ app.get('/admin', (req, res) => {
     const santriMTs = data.filter(p => p.jenjang === 'SMP/MTs').length;
     const santriMA = data.filter(p => p.jenjang === 'SMA/MA').length;
 
+    // --- LOGIKA PENDAFTAR TERBARU (5 ORANG) ---
+    const recentSantri = [...data].sort((a, b) => b.id - a.id).slice(0, 5);
+    const rowsRecent = recentSantri.map((p, index) => {
+        const fotoUrl = p.berkas.foto ? '/uploads/' + p.berkas.foto : 'https://via.placeholder.com/40x40';
+        return '<tr class="align-middle">' +
+            '<td class="small text-center">' + (index + 1) + '</td>' +
+            '<td class="text-center"><img src="' + fotoUrl + '" class="rounded-circle shadow-sm" style="width:35px; height:35px; object-fit:cover; border:2px solid #1e4d2b;"></td>' +
+            '<td class="small fw-bold">' + p.nama + '</td>' +
+            '<td class="small text-center">' + (p.jenjang || '-') + '</td>' +
+            '<td class="small text-muted" style="font-size:0.75rem;"><i class="fas fa-clock me-1"></i>' + (p.tanggal || p.tahunDaftar || '-') + '</td>' +
+        '</tr>';
+    }).join('');
+
     const rowsSantri = data.map((p, index) => {
         const fotoUrl = p.berkas.foto ? '/uploads/' + p.berkas.foto : 'https://via.placeholder.com/40x50';
         const btnB = (file, label, color) => {
@@ -459,6 +472,26 @@ app.get('/admin', (req, res) => {
                                 <div class="col-md-6"><div class="card stat-card bg-warning text-dark p-4"><h5>MA</h5><h1>${santriMA}</h1></div></div>
                             </div>
                             
+                            <div class="card border-0 shadow-sm p-4 rounded-4 bg-white mt-4">
+                                <h5 class="fw-bold text-primary mb-3"><i class="fas fa-history me-2"></i>5 Pendaftar Terbaru</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="small text-center">No</th>
+                                                <th class="small text-center">Foto</th>
+                                                <th class="small">Nama Lengkap</th>
+                                                <th class="small text-center">Jenjang</th>
+                                                <th class="small">Waktu Daftar</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${rowsRecent || '<tr><td colspan="5" class="text-center py-4 text-muted">Belum ada data pendaftar</td></tr>'}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
                             <div class="card border-0 shadow-sm p-4 rounded-4 bg-white mt-4">
                                 <h5 class="fw-bold text-success mb-3"><i class="fas fa-database me-2"></i>Pencadangan Data (Backup)</h5>
                                 <p class="text-muted small">Gunakan fitur ini untuk mencadangkan seluruh data santri dan berkas fisik sebelum masa aktif server berakhir.</p>
