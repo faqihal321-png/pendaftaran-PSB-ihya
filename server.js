@@ -5,7 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const session = require('express-session');
 const ExcelJS = require('exceljs');
-const JSZip = require('jszip'); // Library untuk membuat file ZIP
+const JSZip = require('jszip');
 
 const app = express();
 
@@ -39,14 +39,14 @@ const readConfig = () => {
         if (!fs.existsSync(CONFIG_FILE)) {
             const def = { 
                 biayaA: "100.000", 
-                biayaB1: "200.000", // Seragam
-                biayaB2: "100.000", // Kitab/Buku
-                biayaB3: "200.000", // Infaq
+                biayaB1: "200.000",
+                biayaB2: "100.000",
+                biayaB3: "200.000",
                 biayaPondok: "50.000", 
                 biayaMakan: "400.000", 
-                biayaE1: "500.000", // Operasional 1 Tahun
-                biayaE2: "200.000", // PHBI
-                biayaE3: "100.000", // Kesehatan 1 Tahun
+                biayaE1: "500.000",
+                biayaE2: "200.000",
+                biayaE3: "100.000",
                 tahunAktif: "2026" 
             };
             fs.writeFileSync(CONFIG_FILE, JSON.stringify(def));
@@ -96,8 +96,6 @@ app.post('/daftar', upload.fields([{ name: 'ktp' }, { name: 'ijazah' }, { name: 
 });
 
 // --- FITUR BACKUP & EXPORT ---
-
-// 1. Export Excel
 app.get('/admin/export-excel', async (req, res) => {
     if (!req.session.isLoggedIn) return res.status(403).send("Unauthorized");
     const data = readData();
@@ -138,14 +136,12 @@ app.get('/admin/export-excel', async (req, res) => {
     res.end();
 });
 
-// 2. Download ZIP Berkas (Struktur Folder Per Nama)
 app.get('/admin/download-berkas-zip', async (req, res) => {
     if (!req.session.isLoggedIn) return res.status(403).send("Unauthorized");
     const zip = new JSZip();
     const data = readData();
 
     data.forEach(s => {
-        // Sanitasi nama untuk folder agar tidak ada karakter terlarang
         const folderName = s.nama.replace(/[/\\?%*:|"<>]/g, '-'); 
         const santriFolder = zip.folder(folderName);
         const berkas = s.berkas || {};
@@ -678,7 +674,7 @@ app.get('/admin', (req, res) => {
                     const d = DB_SANTRI.find(x => x.id == id);
                     let html = '<div id="detail-view"><div class="d-flex align-items-center mb-4"><img src="/uploads/'+(d.berkas.foto||'')+'" class="rounded shadow me-3" style="width:100px; height:125px; object-fit:cover; border:3px solid #1e4d2b;"><div><h3 class="fw-bold text-success mb-0">'+d.nama+'</h3><p class="text-muted small">'+(d.jenjang||'-')+'</p></div></div>';
                     html += '<div class="row border-top pt-3"><div class="col-md-6 border-end"><h6>DATA PRIBADI</h6><p class="small"><b>NISN:</b> '+(d.nisn||'-')+'<br><b>NIK:</b> '+(d.nik||'-')+'<br><b>Tgl Daftar:</b> '+(d.tanggal||d.tahunDaftar||'-')+'<br><b>Alamat:</b> '+(d.alamat||'-')+'</p></div>';
-                    html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small"><b>Ayah:</b> '+d.namaAyah+'<br><b>Ibu:</b> '+(d.namaI Ibu||'-')+'<br><b>WA:</b> '+d.whatsapp+'</p></div></div>';
+                    html += '<div class="col-md-6 ps-4"><h6>ORANG TUA</h6><p class="small"><b>Ayah:</b> '+d.namaAyah+'<br><b>Ibu:</b> '+(d.namaIbu||'-')+'<br><b>WA:</b> '+d.whatsapp+'</p></div></div>';
                     html += '<div class="mt-4 pt-3 border-top d-flex gap-2"><button class="btn btn-warning fw-bold text-white px-4" onclick="modeEdit('+id+')"><i class="fas fa-edit me-2"></i>EDIT DATA</button><button class="btn btn-outline-danger fw-bold px-4" onclick="hapusSantri('+id+', \\''+d.nama.replace(/'/g, "\\\\'")+'\\')"><i class="fas fa-trash-alt me-2"></i>HAPUS</button><button class="btn btn-secondary px-4 ms-auto" data-bs-dismiss="modal">TUTUP</button></div></div>';
                     html += '<div id="edit-view" style="display:none;"><h4 class="fw-bold text-success mb-4">EDIT DATA SANTRI</h4><div class="row g-3"><div class="col-md-6"><label class="small fw-bold">Nama Lengkap</label><input id="enama" class="form-control" value="'+d.nama+'"></div><div class="col-md-6"><label class="small fw-bold">Jenjang</label><select id="ejenjang" class="form-select"><option value="SMP/MTs" '+(d.jenjang=="SMP/MTs"?"selected":"")+'>SMP/MTs</option><option value="SMA/MA" '+(d.jenjang=="SMA/MA"?"selected":"")+'>SMA/MA</option></select></div><div class="col-md-6"><label class="small fw-bold">NISN</label><input id="enisn" class="form-control" value="'+(d.nisn||'')+'"></div><div class="col-md-6"><label class="small fw-bold">NIK</label><input id="enik" class="form-control" value="'+(d.nik||'')+'"></div><div class="col-md-12"><label class="small fw-bold">Alamat</label><input id="ealamat" class="form-control" value="'+(d.alamat||'')+'"></div><div class="col-md-6"><label class="small fw-bold">Nama Ayah</label><input id="eayah" class="form-control" value="'+d.namaAyah+'"></div><div class="col-md-6"><label class="small fw-bold">WhatsApp</label><input id="ewa" class="form-control" value="'+d.whatsapp+'"></div></div><div class="mt-4 pt-3 border-top d-flex gap-2"><button class="btn btn-success fw-bold px-4" onclick="simpanEdit('+id+')">SIMPAN PERUBAHAN</button><button class="btn btn-light border px-4" onclick="modeDetail()">BATAL</button></div></div>';
                     document.getElementById('isiM').innerHTML = html;
