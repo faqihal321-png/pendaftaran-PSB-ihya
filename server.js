@@ -324,13 +324,24 @@ app.get('/admin', (req, res) => {
         '</tr>';
     }).join('');
 
+    // --- LOGIKA TUNGGAKAN DAN FITUR WA TAGIHAN ---
     const rowsTunggakan = data.filter(p => p.status === 'Aktif').map(p => {
         let pMenunggak = months.filter(m => !(p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif]['p-' + m]));
         let mMenunggak = months.filter(m => !(p.pembayaran[tahunAktif] && p.pembayaran[tahunAktif]['m-' + m]));
         if (pMenunggak.length > 0 || mMenunggak.length > 0) {
             const badgeP = pMenunggak.length > 0 ? '<span class="badge bg-danger mb-1 me-1">Poin C: '+pMenunggak.join(', ')+'</span>' : '<span class="badge bg-success mb-1 text-white">Poin C Lunas</span>';
             const badgeM = mMenunggak.length > 0 ? '<span class="badge bg-primary mb-1">Poin D: '+mMenunggak.join(', ')+'</span>' : '<span class="badge bg-success mb-1 text-white">Poin D Lunas</span>';
-            return '<tr><td><b>'+p.nama+'</b></td><td>'+badgeP+'<br>'+badgeM+'</td><td><button class="btn btn-sm btn-outline-success fw-bold" onclick="kePembayaran(\''+p.nama.replace(/'/g, "\\'")+'\')">BAYAR</button></td></tr>';
+            
+            // Format Pesan WA Tagihan
+            const waNumber = p.whatsapp ? p.whatsapp.replace(/^0/, '62') : '';
+            let waMessage = `Assalamu'alaikum wr. wb.%0AMohon maaf mengganggu waktunya Bapak/Ibu. Kami dari admin PSB Pondok Pesantren Ihyauth Tholibin menginformasikan bahwa administrasi ananda *${p.nama}* memiliki tunggakan untuk bulan berikut:%0A`;
+            if (pMenunggak.length > 0) waMessage += `%0A- *Poin C (Pondok):* ${pMenunggak.join(', ')}`;
+            if (mMenunggak.length > 0) waMessage += `%0A- *Poin D (Makan):* ${mMenunggak.join(', ')}`;
+            waMessage += `%0A%0AMohon agar dapat segera diselesaikan. Jika sudah membayar, mohon abaikan pesan ini.%0ATerima kasih.%0AWassalamu'alaikum.`;
+
+            const btnWa = waNumber ? `<a href="https://wa.me/${waNumber}?text=${waMessage}" target="_blank" class="btn btn-sm btn-outline-secondary fw-bold shadow-sm me-2"><i class="fab fa-whatsapp text-success me-1"></i> WA TAGIHAN</a>` : `<button class="btn btn-sm btn-light text-muted fw-bold shadow-sm me-2" disabled><i class="fas fa-phone-slash me-1"></i> WA KOSONG</button>`;
+
+            return '<tr><td><b>'+p.nama+'</b></td><td>'+badgeP+'<br>'+badgeM+'</td><td><div class="d-flex align-items-center">'+btnWa+'<button class="btn btn-sm btn-success fw-bold shadow-sm" onclick="kePembayaran(\''+p.nama.replace(/'/g, "\\'")+'\')">BAYAR</button></div></td></tr>';
         }
         return null;
     }).filter(x => x !== null).join('');
